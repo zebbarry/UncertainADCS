@@ -1,0 +1,5 @@
+name = "UncertainADCS"
+uuid = "130c74cf-01d7-43c5-bd0c-db96c2b5ddd6"
+version = "0.1.0"
+authors = ["Ottavia Personeni <otpers03@stanford.edu>", "Emma Nicolai <enicolai@stanford.edu", "Zeb Barry <zbarry@stanford.edu>"]
+
