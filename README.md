@@ -10,7 +10,16 @@ A decision-making under uncertainty project investigating optimal spacecraft att
 
 ## Overview
 
-This project addresses the challenge of controlling spacecraft attitude when reaction wheels experience uncertain degradation. The system balances minimizing tracking angle error while maximizing actuator health, progressing from a fully observable MDP to a POMDP with belief tracking using particle filters.
+This project addresses the challenge of controlling spacecraft attitude when reaction wheels experience uncertain degradation. The system balances minimizing attitude tracking error while managing actuator health degradation through a Partially Observable Markov Decision Process (POMDP) framework with belief tracking.
+
+### Key Features
+
+- **Spacecraft Dynamics**: Single-axis attitude control with reaction wheel actuator
+- **Health Degradation Model**: Multi-state health progression (healthy → degraded → critical → failed) with usage-dependent degradation
+- **Partial Observability**: Noisy observations of attitude and angular velocity; health state must be inferred
+- **Belief Tracking**: Maintains probability distribution over health states during operation
+- **Multiple Solvers**: Support for QMDP (fast approximate), SARSOP (offline optimal), and POMCP (online)
+- **Comprehensive Visualization**: Attitude trajectory, health belief evolution, phase portraits, and performance metrics
 
 ## Installation
 
@@ -23,7 +32,7 @@ This project addresses the challenge of controlling spacecraft attitude when rea
 1. Clone this repository and navigate to the project directory:
 
    ```bash
-   cd path/to/project
+   cd UncertainADCS
    ```
 
 2. Start Julia in the project directory:
@@ -38,28 +47,76 @@ This project addresses the challenge of controlling spacecraft attitude when rea
    Pkg.instantiate()
    ```
 
-### Alternative: Manual Package Installation
+## Project Structure
 
-If `Project.toml` is not yet configured, you can manually add packages:
+- `src/UncertainADCS.jl`: POMDP model definition including state space, transition dynamics, observation model, and reward function
+- `src/main.jl`: Solver configuration, simulation execution, and visualization generation
+- `Project.toml`: Julia package dependencies
 
-```julia
-using Pkg
-Pkg.activate(".")
-# Add your required packages, for example:
-# Pkg.add("POMDPs")
-# Pkg.add("MCTS")
-# Pkg.add("ParticleFilters")
-```
+## POMDP Formulation
 
-## Project Stages
+### State Space
+- **Angle (θ)**: Spacecraft attitude error relative to target [-π, π] rad
+- **Angular Velocity (ω)**: Rate of attitude change [-0.5, 0.5] rad/s
+- **Health**: Discrete health states {:healthy, :degraded, :critical, :failed}
 
-1. **Stage 1**: Fully Observable MDP with Monte Carlo tree search
-2. **Stage 2**: Observable health degradation with stochastic actuator wear
-3. **Stage 3**: POMDP with particle filter belief tracking (POMCPOW-based)
+### Actions
+Five discrete torque levels: {-5.0, -2.5, 0.0, 2.5, 5.0} N⋅m
+
+### Observations
+Noisy measurements of angle and angular velocity with Gaussian noise (σ_θ = 0.05 rad, σ_ω = 0.01 rad/s)
+
+### Reward Function
+Balances multiple objectives:
+- Attitude error penalty: -100θ²
+- Angular velocity penalty: -10ω²
+- Control effort penalty: -0.01u²
+- Failure penalty: -1000 (if health = failed)
+
+### Transition Dynamics
+- Spacecraft dynamics: Standard rigid body rotation with torque input
+- Health degradation: Probabilistic transitions based on usage intensity
+  - Degradation probability: p = k₁ + k₂|u|/u_max
+  - Natural degradation: k₁ = 0.0
+  - Usage-dependent: k₂ = 0.0005
 
 ## Usage
 
-_To be added as implementation progresses_
+### Running a Simulation
+
+```julia
+julia --project=. src/main.jl
+```
+
+This will:
+1. Create the spacecraft POMDP model
+2. Solve using QMDP solver (configurable in main.jl)
+3. Run a 100-step simulation
+4. Generate visualization plots
+
+### Available Solvers
+
+Uncomment the desired solver in `src/main.jl`:
+
+```julia
+# QMDP - Fast approximate solution (default)
+qmdp_solver = QMDPSolver(max_iterations=1000, verbose=true)
+
+# SARSOP - Slower but more accurate offline solution
+# sarsop_solver = SARSOPSolver(precision=1e-3, verbose=true)
+
+# POMCP - Online Monte Carlo tree search
+# pomcp_solver = POMCPSolver(tree_queries=1000, c=10.0, max_depth=50)
+```
+
+### Output Visualizations
+
+The simulation generates four plots:
+
+1. **spacecraft_attitude_control_simulation.png**: Time series of angle, angular velocity, control torque, and health state
+2. **health_belief_evolution.png**: Stacked area chart showing probability distribution over health states
+3. **phase_portrait.png**: State space trajectory with time progression and target location
+4. **cumulative_metrics.png**: Cumulative reward, RMS error, and control effort over time
 
 ## References
 
