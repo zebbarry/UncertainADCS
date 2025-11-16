@@ -2,6 +2,7 @@ using UncertainADCS
 using QMDP
 using SARSOP
 using BasicPOMCP
+using Random
 
 # Create the POMDP
 pomdp = SpacecraftPOMDP()
@@ -25,12 +26,12 @@ pomdp = SpacecraftPOMDP()
 # Solve with QMDP (fast, approximate)
 println("Solving with QMDP...")
 qmdp_solver = QMDPSolver(max_iterations=1000, verbose=true)
-qmdp_policy = solve(qmdp_solver, pomdp)
+policy = solve(qmdp_solver, pomdp)
 
 # Solve with SARSOP (slower, more accurate)
 # println("Solving with SARSOP...")
 # sarsop_solver = SARSOPSolver(precision=1e-3, verbose=true)
-# sarsop_policy = solve(sarsop_solver, pomdp)
+# policy = solve(sarsop_solver, pomdp)
 
 # # Online solver: POMCP
 # println("Setting up POMCP...")
@@ -40,7 +41,7 @@ qmdp_policy = solve(qmdp_solver, pomdp)
 #     max_depth=50,
 #     rng=MersenneTwister(1)
 # )
-# pomcp_policy = solve(pomcp_solver, pomdp)
+# policy = solve(pomcp_solver, pomdp)
 
 
 # Run simulation
@@ -54,7 +55,7 @@ end
 
 # Evaluate policy
 # Run simulation
-hist = run_simulation(pomdp, qmdp_policy)
+hist = run_simulation(pomdp, policy)
 
 # Extract data using accessor functions
 states = collect(state_hist(hist))
@@ -96,3 +97,94 @@ end
 # for i in 1:min(10, length(states))
 #     println("  t=$i: θ=$(states[i].θ), ω=$(states[i].ω), u=$(pomdp.actions[actions[i]])")
 # end
+
+# Extract health belief evolution
+using POMDPTools: weighted_iterator
+
+function extract_health_beliefs(beliefs, pomdp)
+    n_steps = length(beliefs)
+    health_probs = zeros(n_steps, length(pomdp.health_states))
+
+    for (t, b) in enumerate(beliefs)
+        for (s, p) in weighted_iterator(b)
+            h_idx = findfirst(==(s.health), pomdp.health_states)
+            health_probs[t, h_idx] += p
+        end
+    end
+
+    return health_probs
+end
+
+health_beliefs = extract_health_beliefs(beliefs, pomdp)
+
+# Plot stacked area chart of health beliefs
+p_belief = areaplot(
+    1:size(health_beliefs, 1),
+    health_beliefs,
+    labels=["Healthy" "Degraded" "Critical" "Failed"],
+    xlabel="Time step",
+    ylabel="Belief Probability",
+    title="Actuator Health Belief Evolution",
+    legend=:right,
+    fillalpha=0.7
+)
+savefig(p_belief, "./health_belief_evolution.png")
+
+# Phase portrait
+health_colors = Dict(
+    :healthy => :green,
+    :degraded => :yellow,
+    :critical => :orange,
+    :failed => :red
+)
+
+colors = [health_colors[h] for h in health_hist]
+
+p_phase = scatter(
+    θ_hist, ω_hist,
+    color=colors,
+    marker_z=1:length(θ_hist),
+    xlabel="Angle θ (rad)",
+    ylabel="Angular velocity ω (rad/s)",
+    title="Phase Portrait (State Space Trajectory)",
+    label="",
+    colorbar=true,
+    colorbar_title="Time step",
+    markersize=3
+)
+# Add target point
+scatter!([0.0], [0.0], color=:blue, marker=:star, markersize=10, label="Target")
+savefig(p_phase, "./phase_portrait.png")
+
+# Cumulative reward
+cumulative_reward = cumsum(rewards)
+
+# RMS error over time
+rms_error = sqrt.(cumsum(θ_hist .^ 2) ./ (1:length(θ_hist)))
+
+# Control effort
+cumulative_control = cumsum(abs.(u_hist))
+
+p_metrics = plot(layout=(3, 1), size=(800, 600))
+plot!(p_metrics[1], cumulative_reward, xlabel="Time step", ylabel="Cumulative Reward", label="", title="Performance Over Time")
+plot!(p_metrics[2], rms_error, xlabel="Time step", ylabel="RMS Error (rad)", label="")
+plot!(p_metrics[3], cumulative_control, xlabel="Time step", ylabel="Cumulative |u|", label="")
+
+savefig(p_metrics, "./cumulative_metrics.png")
+
+# # Compute dominant health belief at each timestep
+# dominant_health = [pomdp.health_states[argmax(health_beliefs[t, :])] for t in 1:size(health_beliefs, 1)]
+
+# # Plot action vs dominant belief
+# p_action_health = scatter(
+#     1:length(u_hist),
+#     u_hist,
+#     group=dominant_health,
+#     xlabel="Time step",
+#     ylabel="Control Torque (N⋅m)",
+#     title="Control Actions vs. Believed Health State",
+#     legend=:right,
+#     markersize=4,
+#     alpha=0.6
+# )
+# savefig(p_action_health, "./action_vs_health_belief.png")
