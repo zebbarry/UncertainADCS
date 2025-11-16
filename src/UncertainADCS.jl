@@ -48,8 +48,8 @@ end
     )
 
     # Degradation parameters
-    k1::Float64 = 0.001            # natural degradation rate
-    k2::Float64 = 0.0005           # usage-dependent degradation
+    k1::Float64 = 0.0            # natural degradation rate
+    k2::Float64 = 0.0005          # usage-dependent degradation
 
     # Observation noise
     σ_θ::Float64 = 0.05            # angle measurement noise (rad)
@@ -58,7 +58,7 @@ end
     # Reward weights
     w_θ::Float64 = 100.0           # attitude error weight
     w_ω::Float64 = 10.0            # angular velocity weight
-    w_u::Float64 = 0.0             # control effort weight
+    w_u::Float64 = 0.01            # control effort weight
     w_fail::Float64 = 1000.0       # failure penalty
 
     # Discount factor
@@ -66,15 +66,25 @@ end
 end
 
 # Helper function to discretize continuous states
+function discretize_continuous(var::Float64, var_max::Float64, n_var::Int)
+    idx = clamp(round(Int, (var + var_max) / (2 * var_max) * (n_var - 1)) + 1, 1, n_var)
+    return idx
+end
+
+function continuous_from_discrete(var_disc::Int, var_max::Float64, n_var::Int)
+    var = (var_disc - 1) / (n_var - 1) * 2 * var_max - var_max
+    return var
+end
+
 function discretize_continuous(pomdp::SpacecraftPOMDP, θ::Float64, ω::Float64)
-    θ_disc = clamp(round(Int, (θ + pomdp.θ_max) / (2 * pomdp.θ_max) * (pomdp.n_θ - 1)) + 1, 1, pomdp.n_θ)
-    ω_disc = clamp(round(Int, (ω + pomdp.ω_max) / (2 * pomdp.ω_max) * (pomdp.n_ω - 1)) + 1, 1, pomdp.n_ω)
+    θ_disc = discretize_continuous(θ, pomdp.θ_max, pomdp.n_θ)
+    ω_disc = discretize_continuous(ω, pomdp.ω_max, pomdp.n_ω)
     return θ_disc, ω_disc
 end
 
 function continuous_from_discrete(pomdp::SpacecraftPOMDP, θ_disc::Int, ω_disc::Int)
-    θ = (θ_disc - 1) / (pomdp.n_θ - 1) * 2 * pomdp.θ_max - pomdp.θ_max
-    ω = (ω_disc - 1) / (pomdp.n_ω - 1) * 2 * pomdp.ω_max - pomdp.ω_max
+    θ = continuous_from_discrete(θ_disc, pomdp.θ_max, pomdp.n_θ)
+    ω = continuous_from_discrete(ω_disc, pomdp.ω_max, pomdp.n_ω)
     return θ, ω
 end
 
@@ -127,8 +137,7 @@ function POMDPs.observations(pomdp::SpacecraftPOMDP)
     # Order matters - must match obsindex
     for ω_idx in 1:pomdp.n_ω
         for θ_idx in 1:pomdp.n_θ
-            θ = (θ_idx - 1) / (pomdp.n_θ - 1) * 2 * pomdp.θ_max - pomdp.θ_max
-            ω = (ω_idx - 1) / (pomdp.n_ω - 1) * 2 * pomdp.ω_max - pomdp.ω_max
+            θ, ω = continuous_from_discrete(pomdp, θ_idx, ω_idx)
             push!(obs, SpacecraftObs(θ, ω))
         end
     end
@@ -137,15 +146,14 @@ end
 
 function POMDPs.obsindex(pomdp::SpacecraftPOMDP, o::SpacecraftObs)
     # Discretize the observation to nearest grid point
-    θ_idx = clamp(round(Int, (o.θ_obs + pomdp.θ_max) / (2 * pomdp.θ_max) * (pomdp.n_θ - 1)) + 1, 1, pomdp.n_θ)
-    ω_idx = clamp(round(Int, (o.ω_obs + pomdp.ω_max) / (2 * pomdp.ω_max) * (pomdp.n_ω - 1)) + 1, 1, pomdp.n_ω)
+    θ_idx, ω_idx = discretize_continuous(pomdp, o.θ_obs, o.ω_obs)
 
     # Linear index: observations are indexed by (θ_idx, ω_idx)
     idx = θ_idx + (ω_idx - 1) * pomdp.n_θ
     return idx
 end
 
-# Discount factor
+
 POMDPs.discount(pomdp::SpacecraftPOMDP) = pomdp.discount
 
 
@@ -203,8 +211,6 @@ function POMDPs.transition(pomdp::SpacecraftPOMDP, s::SpacecraftState, a::Int)
 
     # Ensure probabilities sum to 1.0 (they should, but a final check is safe)
     if !isapprox(sum(probs), 1.0)
-        # This branch should not be reached with the fixed logic, 
-        # but it's a good practice for debugging.
         @warn "Transition probabilities do not sum to 1.0 for state $(s) and action $(a). Sum: $(sum(probs))"
         # Since this warning would cause a solver error, we must normalize:
         probs ./= sum(probs)

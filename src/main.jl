@@ -28,9 +28,9 @@ qmdp_solver = QMDPSolver(max_iterations=1000, verbose=true)
 qmdp_policy = solve(qmdp_solver, pomdp)
 
 # Solve with SARSOP (slower, more accurate)
-println("Solving with SARSOP...")
-sarsop_solver = SARSOPSolver(precision=1e-3, verbose=true)
-sarsop_policy = solve(sarsop_solver, pomdp)
+# println("Solving with SARSOP...")
+# sarsop_solver = SARSOPSolver(precision=1e-3, verbose=true)
+# sarsop_policy = solve(sarsop_solver, pomdp)
 
 # # Online solver: POMCP
 # println("Setting up POMCP...")
@@ -54,7 +54,7 @@ end
 
 # Evaluate policy
 # Run simulation
-hist = run_simulation(pomdp, sarsop_policy)
+hist = run_simulation(pomdp, qmdp_policy)
 
 # Extract data using accessor functions
 states = collect(state_hist(hist))
@@ -92,7 +92,7 @@ for a in unique(actions)
     count = sum(actions .== a)
     println("  Action $a (u=$(pomdp.actions[a])): $count times")
 end
-println("\nFirst 10 states:")
-for i in 1:min(10, length(states))
-    println("  t=$i: θ=$(states[i].θ), ω=$(states[i].ω), u=$(pomdp.actions[actions[i]])")
-end
+# println("\nFirst 10 states:")
+# for i in 1:min(10, length(states))
+#     println("  t=$i: θ=$(states[i].θ), ω=$(states[i].ω), u=$(pomdp.actions[actions[i]])")
+# end
