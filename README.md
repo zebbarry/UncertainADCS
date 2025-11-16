@@ -28,4 +28,6 @@ Pkg.instantiate()
 julia --project=. src/main.jl
 ```
 
-Generates visualizations: spacecraft_attitude_control_simulation.png, health_belief_evolution.png, phase_portrait.png, and cumulative_metrics.png
+# References
+
+ Sunberg, Z. N., & Kochenderfer, M. J. (2018). Online algorithms for POMDPs with continuous state, action, and observation spaces. _Proceedings of the International Conference on Automated Planning and Scheduling_, 28, 259-263.
