@@ -13,18 +13,20 @@ struct SpacecraftState
     θ::Float64          # angle
     ω::Float64          # angular velocity
     health::Symbol      # health state
+    θ_target_idx::Int   # current target angle index
 end
 
 struct SpacecraftObs
     θ_obs::Float64      # observed angle
     ω_obs::Float64      # observed angular velocity
+    θ_target::Float64   # target angle
 end
 
 
 @with_kw struct SpacecraftPOMDP <: POMDP{SpacecraftState,Int,SpacecraftObs}
     # Physical parameters
     J_sc::Float64 = 100.0          # spacecraft inertia (kg⋅m²)
-    u_max::Float64 = 5.0           # max torque (N⋅m)
+    u_max::Float64 = 4.0           # max torque (N⋅m)
     dt::Float64 = 1.0              # timestep (s)
 
     # State bounds
@@ -32,11 +34,15 @@ end
     ω_max::Float64 = 0.5           # rad/s
 
     # Discretization
-    n_θ::Int = 21                  # number of angle bins
-    n_ω::Int = 13                  # number of angular velocity bins
+    n_θ::Int = 36                  # number of angle bins
+    n_ω::Int = 20                  # number of angular velocity bins
 
     # Actions: discretized torque levels
     actions::Vector{Float64} = [-u_max, -u_max / 2, 0.0, u_max / 2, u_max]
+
+    # Target angles
+    target_angles::Vector{Float64} = [-π / 2, π / 2]
+    target_switch_period::Float64 = 50.0   # seconds
 
     # Health states
     health_states::Vector{Symbol} = [:healthy, :degraded, :critical, :failed]
@@ -49,7 +55,7 @@ end
 
     # Degradation parameters
     k1::Float64 = 0.0            # natural degradation rate
-    k2::Float64 = 0.0005          # usage-dependent degradation
+    k2::Float64 = 0.01          # usage-dependent degradation
 
     # Observation noise
     σ_θ::Float64 = 0.05            # angle measurement noise (rad)
@@ -57,9 +63,9 @@ end
 
     # Reward weights
     w_θ::Float64 = 100.0           # attitude error weight
-    w_ω::Float64 = 10.0            # angular velocity weight
+    w_ω::Float64 = 0.0            # angular velocity weight
     w_u::Float64 = 0.01            # control effort weight
-    w_fail::Float64 = 1000.0       # failure penalty
+    w_fail::Float64 = 1e8          # failure penalty
 
     # Discount factor
     discount::Float64 = 0.95
@@ -90,10 +96,11 @@ end
 
 # State space
 POMDPs.states(pomdp::SpacecraftPOMDP) = [
-    SpacecraftState(θ, ω, h)
+    SpacecraftState(θ, ω, h, θ_target_idx)
     for θ_idx in 1:pomdp.n_θ
     for ω_idx in 1:pomdp.n_ω
     for h in pomdp.health_states
+    for θ_target_idx in 1:length(pomdp.target_angles)
     for (θ, ω) in [continuous_from_discrete(pomdp, θ_idx, ω_idx)]
 ]
 
@@ -101,27 +108,29 @@ POMDPs.stateindex(pomdp::SpacecraftPOMDP, s::SpacecraftState) = begin
     θ_idx, ω_idx = discretize_continuous(pomdp, s.θ, s.ω)
     h_idx = findfirst(==(s.health), pomdp.health_states)
 
-    # Linear indexing (no ω_w anymore!)
+    # Linear indexing
     idx = θ_idx +
           (ω_idx - 1) * pomdp.n_θ +
-          (h_idx - 1) * pomdp.n_θ * pomdp.n_ω
+          (h_idx - 1) * pomdp.n_θ * pomdp.n_ω +
+          (s.θ_target_idx - 1) * pomdp.n_θ * pomdp.n_ω * length(pomdp.health_states)
     return idx
 end
 
 # Initial state
 function POMDPs.initialstate(pomdp::SpacecraftPOMDP)
-    # Target continuous coordinates
-    θ_target = 1.0
-    ω_target = 0.5
+    # Continuous coordinates
+    θ_init = 1.0
+    ω_init = 0.0
+    θ_target_idx = 1
 
-    # 1. Discretize the target coordinates to find the nearest grid bin index
-    θ_idx, ω_idx = discretize_continuous(pomdp, θ_target, ω_target)
+    # 1. Discretize the coordinates to find the nearest grid bin index
+    θ_idx, ω_idx = discretize_continuous(pomdp, θ_init, ω_init)
 
     # 2. Convert the discrete indices back to the center of the grid cell
     θ_disc, ω_disc = continuous_from_discrete(pomdp, θ_idx, ω_idx)
 
     # 3. Create the initial state using the grid center
-    s0 = SpacecraftState(θ_disc, ω_disc, :healthy)
+    s0 = SpacecraftState(θ_disc, ω_disc, :healthy, θ_target_idx)
 
     # Return the SparseCat over this valid, discretized state
     return SparseCat([s0], [1.0])
@@ -135,10 +144,12 @@ POMDPs.actionindex(pomdp::SpacecraftPOMDP, a::Int) = a
 function POMDPs.observations(pomdp::SpacecraftPOMDP)
     obs = SpacecraftObs[]
     # Order matters - must match obsindex
-    for ω_idx in 1:pomdp.n_ω
-        for θ_idx in 1:pomdp.n_θ
-            θ, ω = continuous_from_discrete(pomdp, θ_idx, ω_idx)
-            push!(obs, SpacecraftObs(θ, ω))
+    for θ_target in pomdp.target_angles
+        for ω_idx in 1:pomdp.n_ω
+            for θ_idx in 1:pomdp.n_θ
+                θ, ω = continuous_from_discrete(pomdp, θ_idx, ω_idx)
+                push!(obs, SpacecraftObs(θ, ω, θ_target))
+            end
         end
     end
     return obs
@@ -149,7 +160,8 @@ function POMDPs.obsindex(pomdp::SpacecraftPOMDP, o::SpacecraftObs)
     θ_idx, ω_idx = discretize_continuous(pomdp, o.θ_obs, o.ω_obs)
 
     # Linear index: observations are indexed by (θ_idx, ω_idx)
-    idx = θ_idx + (ω_idx - 1) * pomdp.n_θ
+    idx = θ_idx + (ω_idx - 1) * pomdp.n_θ +
+          (s.θ_target_idx - 1) * pomdp.n_θ * pomdp.n_ω * length(pomdp.health_states)
     return idx
 end
 
@@ -178,6 +190,18 @@ function POMDPs.transition(pomdp::SpacecraftPOMDP, s::SpacecraftState, a::Int)
     θ_idx, ω_idx = discretize_continuous(pomdp, θ_cont, ω_cont)
     θ_disc, ω_disc = continuous_from_discrete(pomdp, θ_idx, ω_idx)
 
+    # Goal Transition Parameters
+    if abs(rad2deg(s.θ - pomdp.target_angles[s.θ_target_idx])) < 8.0 && abs(rad2deg(s.ω)) < 10.0
+        p_switch = 1.0 / (pomdp.target_switch_period * pomdp.dt)
+    else
+        p_switch = 0.0
+    end
+    target_count = length(pomdp.target_angles)
+
+    # Calculate the next index in the cycle
+    θ_target_idx_stay = s.θ_target_idx
+    θ_target_idx_switch = mod1(s.θ_target_idx + 1, target_count) # Modulo arithmetic ensures cycling (1 -> 2 -> ... -> N -> 1)
+
     # Health degradation transitions
     u_normalized = abs(u) / pomdp.u_max
     p_degrade = pomdp.k1 + pomdp.k2 * u_normalized
@@ -185,35 +209,53 @@ function POMDPs.transition(pomdp::SpacecraftPOMDP, s::SpacecraftState, a::Int)
     next_states = SpacecraftState[]
     probs = Float64[]
 
+    # Health probabilities (P(H_new | H_old, a))
+    p_stay_health = 1.0 - p_degrade
+    p_down_health = p_degrade
+
+    h_stay = s.health
+    if s.health == :failed
+        p_stay_health = 1.0
+        p_down_health = 0.0
+        h_down = :failed  # Stays failed
+    else
+        h_idx = findfirst(==(s.health), pomdp.health_states)
+        h_down = pomdp.health_states[h_idx+1]
+    end
+
+    next_states = SpacecraftState[]
+    probs = Float64[]
+
     # 3. Create next states using the grid-centered (θ_disc, ω_disc)
-    if s.health == :healthy
-        push!(next_states, SpacecraftState(θ_disc, ω_disc, :healthy))
-        push!(probs, 1.0 - p_degrade)
-        push!(next_states, SpacecraftState(θ_disc, ω_disc, :degraded))
-        push!(probs, p_degrade)
+    # --- 1. Goal Stays (Probability = 1.0 - p_switch) ---
+    prob_base_stay = 1.0 - p_switch
 
-    elseif s.health == :degraded
-        push!(next_states, SpacecraftState(θ_disc, ω_disc, :degraded))
-        push!(probs, 1.0 - p_degrade)
-        push!(next_states, SpacecraftState(θ_disc, ω_disc, :critical))
-        push!(probs, p_degrade)
+    #   Goal Stays, Health Stays
+    push!(next_states, SpacecraftState(θ_disc, ω_disc, h_stay, θ_target_idx_stay))
+    push!(probs, p_stay_health * prob_base_stay)
 
-    elseif s.health == :critical
-        push!(next_states, SpacecraftState(θ_disc, ω_disc, :critical))
-        push!(probs, 1.0 - p_degrade)
-        push!(next_states, SpacecraftState(θ_disc, ω_disc, :failed))
-        push!(probs, p_degrade)
+    #   Goal Stays, Health Degrades (only if possible)
+    if s.health != :failed
+        push!(next_states, SpacecraftState(θ_disc, ω_disc, h_down, θ_target_idx_stay))
+        push!(probs, p_down_health * prob_base_stay)
+    end
 
-    else # :failed
-        push!(next_states, SpacecraftState(θ_disc, ω_disc, :failed))
-        push!(probs, 1.0)
+    # --- 2. Goal Switches (Probability = p_switch) ---
+    prob_base_switch = p_switch
+
+    #   Goal Switches, Health Stays
+    push!(next_states, SpacecraftState(θ_disc, ω_disc, h_stay, θ_target_idx_switch))
+    push!(probs, p_stay_health * prob_base_switch)
+
+    #   Goal Switches, Health Degrades (only if possible)
+    if s.health != :failed
+        push!(next_states, SpacecraftState(θ_disc, ω_disc, h_down, θ_target_idx_switch))
+        push!(probs, p_down_health * prob_base_switch)
     end
 
     # Ensure probabilities sum to 1.0 (they should, but a final check is safe)
     if !isapprox(sum(probs), 1.0)
         @warn "Transition probabilities do not sum to 1.0 for state $(s) and action $(a). Sum: $(sum(probs))"
-        # Since this warning would cause a solver error, we must normalize:
-        probs ./= sum(probs)
     end
 
     return SparseCat(next_states, probs)
@@ -238,7 +280,9 @@ function POMDPs.observation(pomdp::SpacecraftPOMDP, a::Int, sp::SpacecraftState)
         p_θ = cdf(θ_dist, o.θ_obs + θ_width / 2) - cdf(θ_dist, o.θ_obs - θ_width / 2)
         p_ω = cdf(ω_dist, o.ω_obs + ω_width / 2) - cdf(ω_dist, o.ω_obs - ω_width / 2)
 
-        probs[i] = p_θ * p_ω
+        p_θ_target = o.θ_target == pomdp.target_angles[sp.θ_target_idx] ? 1.0 : 0.0
+
+        probs[i] = p_θ * p_ω * p_θ_target
     end
 
     # Normalize
@@ -250,10 +294,17 @@ end
 function POMDPs.reward(pomdp::SpacecraftPOMDP, s::SpacecraftState, a::Int)
     u = pomdp.actions[a]
 
+    # Calculate attitude error relative to the target
+    θ_error = s.θ - pomdp.target_angles[s.θ_target_idx]
+
     # Quadratic costs
-    r = -pomdp.w_θ * s.θ^2 -
+    r = -pomdp.w_θ * θ_error^2 -
         pomdp.w_ω * s.ω^2 -
         pomdp.w_u * u^2
+
+    if abs(rad2deg(θ_error)) < 8.0 && abs(rad2deg(s.ω)) < 5.0
+        r += 100.0  # Reward for being within target zone
+    end
 
     # Failure penalty
     if s.health == :failed
@@ -263,6 +314,6 @@ function POMDPs.reward(pomdp::SpacecraftPOMDP, s::SpacecraftState, a::Int)
     return r
 end
 
-POMDPs.isterminal(pomdp::SpacecraftPOMDP, s::SpacecraftState) = false
+POMDPs.isterminal(pomdp::SpacecraftPOMDP, s::SpacecraftState) = s.health == :failed
 
 end

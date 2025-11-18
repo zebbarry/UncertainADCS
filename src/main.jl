@@ -55,7 +55,7 @@ end
 
 # Evaluate policy
 # Run simulation
-hist = run_simulation(pomdp, policy)
+hist = run_simulation(pomdp, policy, 2000)
 
 # Extract data using accessor functions
 states = collect(state_hist(hist))
@@ -65,28 +65,17 @@ rewards = collect(reward_hist(hist))
 beliefs = collect(belief_hist(hist))
 
 # Now you can plot
-θ_hist = [s.θ for s in states]
-ω_hist = [s.ω for s in states]
+θ_hist = [rad2deg(s.θ) for s in states]
+ω_hist = [rad2deg(s.ω) for s in states]
 health_hist = [s.health for s in states]
 u_hist = [pomdp.actions[a] for a in actions]
-
-# Plot
-using Plots
-
-p1 = plot(θ_hist, label="Angle θ", xlabel="Time step", ylabel="Angle (rad)")
-p2 = plot(ω_hist, label="Angular velocity ω", xlabel="Time step", ylabel="ω (rad/s)")
-p3 = plot(u_hist, label="Control torque", xlabel="Time step", ylabel="Torque (N⋅m)")
-p4 = plot([string(h) for h in health_hist], label="Health state", xlabel="Time step", ylabel="Health", legend=false)
-
-p = plot(p1, p2, p3, p4, layout=(4, 1), size=(800, 800))
-
-savefig(p, "./spacecraft_attitude_control_simulation.png")
+θ_target_hist = [rad2deg(pomdp.target_angles[s.θ_target_idx]) for s in states]
 
 # Diagnostic printout
 println("\n=== DIAGNOSTICS ===")
 println("Number of steps: ", length(states))
-println("Initial state: θ=$(states[1].θ), ω=$(states[1].ω), health=$(states[1].health)")
-println("Final state: θ=$(states[end].θ), ω=$(states[end].ω), health=$(states[end].health)")
+println("Initial state: θ=$(θ_hist[1]), ω=$(ω_hist[1]), health=$(health_hist[1])")
+println("Final state: θ=$(θ_hist[end]), ω=$(ω_hist[end]), health=$(health_hist[end])")
 println("\nActions taken: ", unique(actions))
 println("Action distribution: ")
 for a in unique(actions)
@@ -97,6 +86,19 @@ end
 # for i in 1:min(10, length(states))
 #     println("  t=$i: θ=$(states[i].θ), ω=$(states[i].ω), u=$(pomdp.actions[actions[i]])")
 # end
+
+# Plot
+using Plots
+
+p1 = plot(θ_hist, label="Angle θ", xlabel="Time step", ylabel="Angle (°)")
+plot!(p1, θ_target_hist, label="Target θ", linestyle=:dash, color=:red, linewidth=2)
+p2 = plot(ω_hist, label="Angular velocity ω", xlabel="Time step", ylabel="ω (°/s)")
+p3 = plot(u_hist, label="Control torque", xlabel="Time step", ylabel="Torque (N⋅m)")
+p4 = plot([string(h) for h in health_hist], label="Health state", xlabel="Time step", ylabel="Health", legend=false)
+
+p = plot(p1, p2, p3, p4, layout=(4, 1), size=(800, 800))
+
+savefig(p, "spacecraft_attitude_control_simulation.png")
 
 # Extract health belief evolution
 using POMDPTools: weighted_iterator
@@ -128,7 +130,7 @@ p_belief = areaplot(
     legend=:right,
     fillalpha=0.7
 )
-savefig(p_belief, "./health_belief_evolution.png")
+savefig(p_belief, "health_belief_evolution.png")
 
 # Phase portrait
 health_colors = Dict(
@@ -141,11 +143,11 @@ health_colors = Dict(
 colors = [health_colors[h] for h in health_hist]
 
 p_phase = scatter(
-    θ_hist, ω_hist,
+    θ_hist .- θ_target_hist, ω_hist,
     color=colors,
     marker_z=1:length(θ_hist),
-    xlabel="Angle θ (rad)",
-    ylabel="Angular velocity ω (rad/s)",
+    xlabel="Angle Error θ (°)",
+    ylabel="Angular velocity ω (°/s)",
     title="Phase Portrait (State Space Trajectory)",
     label="",
     colorbar=true,
@@ -154,23 +156,23 @@ p_phase = scatter(
 )
 # Add target point
 scatter!([0.0], [0.0], color=:blue, marker=:star, markersize=10, label="Target")
-savefig(p_phase, "./phase_portrait.png")
+savefig(p_phase, "phase_portrait.png")
 
 # Cumulative reward
 cumulative_reward = cumsum(rewards)
 
 # RMS error over time
-rms_error = sqrt.(cumsum(θ_hist .^ 2) ./ (1:length(θ_hist)))
+rms_error = sqrt.(cumsum((θ_hist .- θ_target_hist) .^ 2) ./ (1:length(θ_hist)))
 
 # Control effort
 cumulative_control = cumsum(abs.(u_hist))
 
 p_metrics = plot(layout=(3, 1), size=(800, 600))
 plot!(p_metrics[1], cumulative_reward, xlabel="Time step", ylabel="Cumulative Reward", label="", title="Performance Over Time")
-plot!(p_metrics[2], rms_error, xlabel="Time step", ylabel="RMS Error (rad)", label="")
+plot!(p_metrics[2], rms_error, xlabel="Time step", ylabel="RMS Error (°)", label="")
 plot!(p_metrics[3], cumulative_control, xlabel="Time step", ylabel="Cumulative |u|", label="")
 
-savefig(p_metrics, "./cumulative_metrics.png")
+savefig(p_metrics, "cumulative_metrics.png")
 
 # # Compute dominant health belief at each timestep
 # dominant_health = [pomdp.health_states[argmax(health_beliefs[t, :])] for t in 1:size(health_beliefs, 1)]
