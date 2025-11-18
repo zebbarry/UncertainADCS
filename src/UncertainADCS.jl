@@ -158,10 +158,12 @@ end
 function POMDPs.obsindex(pomdp::SpacecraftPOMDP, o::SpacecraftObs)
     # Discretize the observation to nearest grid point
     θ_idx, ω_idx = discretize_continuous(pomdp, o.θ_obs, o.ω_obs)
+    θ_target_idx = findfirst(==(o.θ_target), pomdp.target_angles)
 
-    # Linear index: observations are indexed by (θ_idx, ω_idx)
-    idx = θ_idx + (ω_idx - 1) * pomdp.n_θ +
-          (s.θ_target_idx - 1) * pomdp.n_θ * pomdp.n_ω * length(pomdp.health_states)
+    # Linear index: observations are indexed by (θ_idx, ω_idx, θ_target_idx)
+    idx = θ_idx +
+          (ω_idx - 1) * pomdp.n_θ +
+          (θ_target_idx - 1) * pomdp.n_θ * pomdp.n_ω
     return idx
 end
 
