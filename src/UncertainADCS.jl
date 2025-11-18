@@ -193,6 +193,7 @@ function POMDPs.transition(pomdp::SpacecraftPOMDP, s::SpacecraftState, a::Int)
     θ_disc, ω_disc = continuous_from_discrete(pomdp, θ_idx, ω_idx)
 
     # Goal Transition Parameters
+    # FIXME: Make these defined on the pomdp struct
     if abs(rad2deg(s.θ - pomdp.target_angles[s.θ_target_idx])) < 8.0 && abs(rad2deg(s.ω)) < 8.0
         p_switch = 1.0 / (pomdp.target_switch_period * pomdp.dt)
     else
@@ -326,6 +327,7 @@ function POMDPs.reward(pomdp::SpacecraftPOMDP, s::SpacecraftState, a::Int, sp::S
         pomdp.w_ω * s.ω^2 -
         pomdp.w_u * u^2
 
+    # FIXME: Make these defined on the pomdp struct
     if abs(rad2deg(θ_error)) < 8.0 && abs(rad2deg(s.ω)) < 5.0
         r += 50.0  # Reward for being within target zone
     end
