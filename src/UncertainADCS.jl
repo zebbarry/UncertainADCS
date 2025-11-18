@@ -291,7 +291,7 @@ function POMDPs.observation(pomdp::SpacecraftPOMDP, a::Int, sp::SpacecraftState)
     return SparseCat(obs_list, probs)
 end
 
-function POMDPs.reward(pomdp::SpacecraftPOMDP, s::SpacecraftState, a::Int)
+function POMDPs.reward(pomdp::SpacecraftPOMDP, s::SpacecraftState, a::Int, sp::SpacecraftState)
     u = pomdp.actions[a]
 
     # Calculate attitude error relative to the target
@@ -307,7 +307,7 @@ function POMDPs.reward(pomdp::SpacecraftPOMDP, s::SpacecraftState, a::Int)
     end
 
     # Failure penalty
-    if s.health == :failed
+    if sp.health == :failed
         r -= pomdp.w_fail
     end
 
