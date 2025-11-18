@@ -288,7 +288,15 @@ function POMDPs.observation(pomdp::SpacecraftPOMDP, a::Int, sp::SpacecraftState)
     end
 
     # Normalize
-    probs ./= sum(probs)
+    total = sum(probs)
+    if total > 0.0
+        probs ./= total
+    else
+        # Fallback: uniform distribution over valid observations
+        @warn "Observation probabilities are <= 0 for state $(s) and action $(a)."
+        valid_obs = findall(o -> o.θ_target == pomdp.target_angles[sp.θ_target_idx], obs_list)
+        probs[valid_obs] .= 1.0 / length(valid_obs)
+    end
 
     return SparseCat(obs_list, probs)
 end

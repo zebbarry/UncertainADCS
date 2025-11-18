@@ -47,6 +47,7 @@ policy = solve(qmdp_solver, pomdp)
 # Run simulation
 using POMDPTools
 function run_simulation(pomdp, policy, num_steps=100)
+    println("Running simulation for $num_steps steps...")
     sim = HistoryRecorder(max_steps=num_steps)
     hist = simulate(sim, pomdp, policy)
 
