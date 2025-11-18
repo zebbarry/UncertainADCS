@@ -293,6 +293,20 @@ function POMDPs.observation(pomdp::SpacecraftPOMDP, a::Int, sp::SpacecraftState)
     return SparseCat(obs_list, probs)
 end
 
+# 2-argument reward: expected reward over next states
+function POMDPs.reward(pomdp::SpacecraftPOMDP, s::SpacecraftState, a::Int)
+    # Compute expected reward over transition distribution
+    trans = transition(pomdp, s, a)
+    expected_r = 0.0
+
+    for (sp, p) in POMDPTools.weighted_iterator(trans)
+        expected_r += p * reward(pomdp, s, a, sp)
+    end
+
+    return expected_r
+end
+
+# 3-argument reward: immediate reward for s-a-sp triple
 function POMDPs.reward(pomdp::SpacecraftPOMDP, s::SpacecraftState, a::Int, sp::SpacecraftState)
     u = pomdp.actions[a]
 
