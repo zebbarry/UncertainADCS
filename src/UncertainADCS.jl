@@ -31,11 +31,11 @@ end
 
     # State bounds
     θ_max::Float64 = π
-    ω_max::Float64 = 0.5           # rad/s
+    ω_max::Float64 = 0.4           # rad/s
 
     # Discretization
     n_θ::Int = 36                  # number of angle bins
-    n_ω::Int = 20                  # number of angular velocity bins
+    n_ω::Int = 25                  # number of angular velocity bins
 
     # Actions: discretized torque levels
     actions::Vector{Float64} = [-u_max, -u_max / 2, 0.0, u_max / 2, u_max]
@@ -62,10 +62,10 @@ end
     σ_ω::Float64 = 0.01            # angular velocity noise (rad/s)
 
     # Reward weights
-    w_θ::Float64 = 100.0           # attitude error weight
+    w_θ::Float64 = 10.0            # attitude error weight
     w_ω::Float64 = 0.0            # angular velocity weight
-    w_u::Float64 = 0.01            # control effort weight
-    w_fail::Float64 = 1e8          # failure penalty
+    w_u::Float64 = 0.0            # control effort weight
+    w_fail::Float64 = 10000.0     # failure penalty
 
     # Discount factor
     discount::Float64 = 0.95
@@ -193,7 +193,7 @@ function POMDPs.transition(pomdp::SpacecraftPOMDP, s::SpacecraftState, a::Int)
     θ_disc, ω_disc = continuous_from_discrete(pomdp, θ_idx, ω_idx)
 
     # Goal Transition Parameters
-    if abs(rad2deg(s.θ - pomdp.target_angles[s.θ_target_idx])) < 8.0 && abs(rad2deg(s.ω)) < 10.0
+    if abs(rad2deg(s.θ - pomdp.target_angles[s.θ_target_idx])) < 8.0 && abs(rad2deg(s.ω)) < 8.0
         p_switch = 1.0 / (pomdp.target_switch_period * pomdp.dt)
     else
         p_switch = 0.0
@@ -327,7 +327,7 @@ function POMDPs.reward(pomdp::SpacecraftPOMDP, s::SpacecraftState, a::Int, sp::S
         pomdp.w_u * u^2
 
     if abs(rad2deg(θ_error)) < 8.0 && abs(rad2deg(s.ω)) < 5.0
-        r += 100.0  # Reward for being within target zone
+        r += 50.0  # Reward for being within target zone
     end
 
     # Failure penalty
