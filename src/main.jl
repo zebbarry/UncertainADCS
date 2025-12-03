@@ -3,6 +3,8 @@ using QMDP
 using SARSOP
 using BasicPOMCP
 using Random
+using PointBasedValueIteration
+using FIB
 
 # Create the POMDP
 pomdp = SpacecraftPOMDP()
@@ -44,6 +46,36 @@ policy = solve(qmdp_solver, pomdp)
 # policy = solve(pomcp_solver, pomdp)
 
 
+############################################# ADDING PBVI and FIB and running solvers together: #############################################
+
+# println("Solving with PBVI...")
+# pbvi_solver = PBVISolver(max_iter=50, verbose=true)
+# policy_pbvi = solve(pbvi_solver, pomdp)
+
+# println("Solving with FIB...")
+# fib_solver = FIBSolver(max_iter=50)
+# policy_fib = solve(fib_solver, pomdp)
+
+# TO USE ALL SOLVERS TOGETHER:
+
+# solvers = Dict(
+#     "QMDP"   => QMDPSolver(max_iterations=1000, verbose=true),
+#     "SARSOP" => SARSOPSolver(precision=1e-3, verbose=true),
+#     "PBVI"   => PBVISolver(max_iter=50, verbose=true),
+#     "FIB"    => FIBSolver(max_iter=50),
+#     "POMCP"  => POMCPSolver(tree_queries=1000, c=10.0, max_depth=50, rng=MersenneTwister(1))
+# )
+
+# policies = Dict()
+
+# for (name, solver) in solvers
+#     println("\n=== Solving with $name ===")
+#     policies[name] = solve(solver, pomdp)
+# end
+
+############################################# END OF [ADDING PBVI and FIB and running solvers together] #############################################
+
+
 # Run simulation
 using POMDPTools
 function run_simulation(pomdp, policy, num_steps=100)
@@ -57,6 +89,55 @@ end
 # Evaluate policy
 # Run simulation
 hist = run_simulation(pomdp, policy, 2000)
+
+
+############################################# IF WE USE/RUN ALL SOLVERS TOGETHER: #############################################
+
+# histories = Dict()
+
+# for (name, policy) in policies
+#     println("\n=== Simulating $name policy ===")
+#     histories[name] = run_simulation(pomdp, policy, 2000)
+# end
+
+# COMPARE SOLVERS:
+# (or modify the code below this block to include all new policies and extract all new metrics)
+
+# to compare cumulative reward
+
+# for (name, hist) in histories
+#     rewards = collect(reward_hist(hist))
+#     println("Total reward for $name = ", sum(rewards))
+# end
+
+# to compare RMS tracking error
+
+# for (name, hist) in histories
+#     states = collect(state_hist(hist))
+#     θ_hist = [rad2deg(s.θ) for s in states]
+#     θ_target_hist = [rad2deg(pomdp.target_angles[s.θ_target_idx]) for s in states]
+#     rms = sqrt(mean((θ_hist .- θ_target_hist).^2))
+#     println("RMS angle error for $name = $rms")
+# end
+
+# to compare actuator effort
+
+# for (name, hist) in histories
+#     actions = collect(action_hist(hist))
+#     u_hist = [pomdp.actions[a] for a in actions]
+#     effort = sum(abs.(u_hist))
+#     println("Total control effort for $name = $effort")
+# end
+
+# to compare health belief stability
+# Lower entropy = better belief clarity.
+
+# beliefs = collect(belief_hist(histories[name]))
+# health_beliefs = extract_health_beliefs(beliefs, pomdp)
+# entropy = -sum(health_beliefs .* log.(health_beliefs .+ 1e-8)) / size(health_beliefs, 1)
+# println("Average belief entropy for $name = $entropy")
+
+############################################# END OF [IF WE USE/RUN ALL SOLVERS TOGETHER] #############################################
 
 # Extract data using accessor functions
 states = collect(state_hist(hist))

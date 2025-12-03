@@ -62,7 +62,7 @@ end
     σ_ω::Float64 = 0.01            # angular velocity noise (rad/s)
 
     # Reward weights
-    w_θ::Float64 = 10.0            # attitude error weight
+    w_θ::Float64 = 10.0           # attitude error weight
     w_ω::Float64 = 0.0            # angular velocity weight
     w_u::Float64 = 0.0            # control effort weight
     w_fail::Float64 = 10000.0     # failure penalty
@@ -194,6 +194,8 @@ function POMDPs.transition(pomdp::SpacecraftPOMDP, s::SpacecraftState, a::Int)
 
     # Goal Transition Parameters
     # FIXME: Make these defined on the pomdp struct
+    # If the sc is pointing near the current target angle (< 8º) and its ang velocity is small (< 8 º/sec)
+    # Then allow the spacecraft to possibly switch its target index to the next one
     if abs(rad2deg(s.θ - pomdp.target_angles[s.θ_target_idx])) < 8.0 && abs(rad2deg(s.ω)) < 8.0
         p_switch = 1.0 / (pomdp.target_switch_period * pomdp.dt)
     else
@@ -280,9 +282,13 @@ function POMDPs.observation(pomdp::SpacecraftPOMDP, a::Int, sp::SpacecraftState)
         θ_width = 2 * pomdp.θ_max / pomdp.n_θ
         ω_width = 2 * pomdp.ω_max / pomdp.n_ω
 
+        # Compute probability that the noisy measurement falls inside observation bin
+
         p_θ = cdf(θ_dist, o.θ_obs + θ_width / 2) - cdf(θ_dist, o.θ_obs - θ_width / 2)
         p_ω = cdf(ω_dist, o.ω_obs + ω_width / 2) - cdf(ω_dist, o.ω_obs - ω_width / 2)
 
+        # Line below: the observed target label is perfectly accurate.
+         # If obs target angle matches actual target → probability 1; otherwise probablity 0
         p_θ_target = o.θ_target == pomdp.target_angles[sp.θ_target_idx] ? 1.0 : 0.0
 
         probs[i] = p_θ * p_ω * p_θ_target
