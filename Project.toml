@@ -15,6 +15,7 @@ PointBasedValueIteration = "835c131e-675f-4498-8e2c-c054c75556e1"
 QMDP = "3aa3ecc9-5a5d-57c8-8188-3e47bd8068d2"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SARSOP = "cef570c6-3a94-5604-96b7-1a5e143043f2"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 BasicPOMCP = "0.3.12"
@@ -28,3 +29,4 @@ PointBasedValueIteration = "0.2.4"
 QMDP = "0.1.8"
 Random = "1.11.0"
 SARSOP = "0.6.0"
+Statistics = "1.11.1"
