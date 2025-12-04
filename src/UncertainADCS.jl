@@ -7,7 +7,7 @@ using Parameters
 
 
 export SpacecraftPOMDP, SpacecraftObs, SpacecraftState
-export save_simulation_results, extract_health_beliefs
+export save_simulation_results, extract_health_beliefs, save_multi_simulation_results
 
 include("plotting.jl")
 

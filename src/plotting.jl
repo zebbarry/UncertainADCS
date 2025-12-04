@@ -313,7 +313,7 @@ function save_multi_simulation_results(histories, solver_name::String, pomdp, so
         if idx <= 5 || idx % 5 == 0
             run_output = joinpath(runs_dir, "run_$idx")
             mkpath(run_output)
-            save_individual_run(hist, idx, solver_name, pomdp, run_output)
+            save_simulation_results(hist, solver_name, pomdp, 0.0, 0.0, base_dir=run_output)
         end
     end
 
@@ -326,7 +326,7 @@ function save_multi_simulation_results(histories, solver_name::String, pomdp, so
         # 95% confidence interval
         ci_margin = 1.96 * σ / sqrt(length(data))
         return (mean=μ, std=σ, min=minimum(data), max=maximum(data),
-                ci_lower=μ-ci_margin, ci_upper=μ+ci_margin)
+            ci_lower=μ - ci_margin, ci_upper=μ + ci_margin)
     end
 
     reward_stats = calc_stats(total_rewards)
