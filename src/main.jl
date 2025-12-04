@@ -91,184 +91,46 @@ end
 # Run simulation
 hist = run_simulation(pomdp, policy, 200)
 
+# Save results using the new plotting function
+save_simulation_results(hist, "QMDP", pomdp)
+
 ############################################# IF WE USE/RUN ALL SOLVERS TOGETHER: #############################################
 
 # histories = Dict()
 
 # for (name, policy) in policies
 #     println("\n=== Simulating $name policy ===")
-#     histories[name] = run_simulation(pomdp, policy, 2000)
+#     histories[name] = run_simulation(pomdp, policy, 200)
 # end
 
 # COMPARE SOLVERS:
-# (or modify the code below this block to include all new policies and extract all new metrics)
+# Save results for each solver and compare metrics
 
-# to compare cumulative reward
-
+# stats = Dict()
 # for (name, hist) in histories
-#     rewards = collect(reward_hist(hist))
-#     println("Total reward for $name = ", sum(rewards))
+#     stats[name] = save_simulation_results(hist, name, pomdp)
 # end
 
-# to compare RMS tracking error
-
-# for (name, hist) in histories
-#     states = collect(state_hist(hist))
-#     θ_hist = [rad2deg(s.θ) for s in states]
-#     θ_target_hist = [rad2deg(pomdp.target_angles[s.θ_target_idx]) for s in states]
-#     rms = sqrt(mean((θ_hist .- θ_target_hist).^2))
-#     println("RMS angle error for $name = $rms")
+# # Print comparison
+# println("\n=== SOLVER COMPARISON ===")
+# println("\nTotal Reward:")
+# for (name, stat) in stats
+#     println("  $name: $(round(stat["total_reward"], digits=2))")
 # end
 
-# to compare actuator effort
-
-# for (name, hist) in histories
-#     actions = collect(action_hist(hist))
-#     u_hist = [pomdp.actions[a] for a in actions]
-#     effort = sum(abs.(u_hist))
-#     println("Total control effort for $name = $effort")
+# println("\nFinal RMS Error (°):")
+# for (name, stat) in stats
+#     println("  $name: $(round(stat["final_rms_error"], digits=2))")
 # end
 
-# to compare health belief stability
-# Lower entropy = better belief clarity.
+# println("\nTotal Control Effort:")
+# for (name, stat) in stats
+#     println("  $name: $(round(stat["total_control_effort"], digits=2))")
+# end
 
-# beliefs = collect(belief_hist(histories[name]))
-# health_beliefs = extract_health_beliefs(beliefs, pomdp)
-# entropy = -sum(health_beliefs .* log.(health_beliefs .+ 1e-8)) / size(health_beliefs, 1)
-# println("Average belief entropy for $name = $entropy")
+# println("\nAverage Belief Entropy:")
+# for (name, stat) in stats
+#     println("  $name: $(round(stat["avg_belief_entropy"], digits=3))")
+# end
 
 ############################################# END OF [IF WE USE/RUN ALL SOLVERS TOGETHER] #############################################
-
-# Extract data using accessor functions
-states = collect(state_hist(hist))
-actions = collect(action_hist(hist))
-observations = collect(observation_hist(hist))
-rewards = collect(reward_hist(hist))
-beliefs = collect(belief_hist(hist))
-
-# Now you can plot
-θ_hist = [rad2deg(s.θ) for s in states]
-ω_hist = [rad2deg(s.ω) for s in states]
-health_hist = [s.health for s in states]
-u_hist = [pomdp.actions[a] for a in actions]
-θ_target_hist = [rad2deg(pomdp.target_angles[s.θ_target_idx]) for s in states]
-
-# Diagnostic printout
-println("\n=== DIAGNOSTICS ===")
-println("Number of steps: ", length(states))
-println("Initial state: θ=$(θ_hist[1]), ω=$(ω_hist[1]), health=$(health_hist[1])")
-println("Final state: θ=$(θ_hist[end]), ω=$(ω_hist[end]), health=$(health_hist[end])")
-println("\nActions taken: ", unique(actions))
-println("Action distribution: ")
-for a in unique(actions)
-    count = sum(actions .== a)
-    println("  Action $a (u=$(pomdp.actions[a])): $count times")
-end
-# println("\nFirst 10 states:")
-# for i in 1:min(10, length(states))
-#     println("  t=$i: θ=$(states[i].θ), ω=$(states[i].ω), u=$(pomdp.actions[actions[i]])")
-# end
-
-# Plot
-using Plots
-
-p1 = plot(θ_hist, label="Angle θ", xlabel="Time step", ylabel="Angle (°)")
-plot!(p1, θ_target_hist, label="Target θ", linestyle=:dash, color=:red, linewidth=2)
-p2 = plot(ω_hist, label="Angular velocity ω", xlabel="Time step", ylabel="ω (°/s)")
-p3 = plot(u_hist, label="Control torque", xlabel="Time step", ylabel="Torque (N⋅m)")
-p4 = plot([string(h) for h in health_hist], label="Health state", xlabel="Time step", ylabel="Health", legend=false)
-
-p = plot(p1, p2, p3, p4, layout=(4, 1), size=(800, 800))
-
-savefig(p, "spacecraft_attitude_control_simulation.png")
-
-# Extract health belief evolution
-using POMDPTools: weighted_iterator
-
-function extract_health_beliefs(beliefs, pomdp)
-    n_steps = length(beliefs)
-    health_probs = zeros(n_steps, length(pomdp.health_states))
-
-    for (t, b) in enumerate(beliefs)
-        for (s, p) in weighted_iterator(b)
-            h_idx = findfirst(==(s.health), pomdp.health_states)
-            health_probs[t, h_idx] += p
-        end
-    end
-
-    return health_probs
-end
-
-health_beliefs = extract_health_beliefs(beliefs, pomdp)
-
-# Plot stacked area chart of health beliefs
-p_belief = areaplot(
-    1:size(health_beliefs, 1),
-    health_beliefs,
-    labels=["Healthy" "Degraded" "Critical" "Failed"],
-    xlabel="Time step",
-    ylabel="Belief Probability",
-    title="Actuator Health Belief Evolution",
-    legend=:right,
-    fillalpha=0.7
-)
-savefig(p_belief, "health_belief_evolution.png")
-
-# Phase portrait
-health_colors = Dict(
-    :healthy => :green,
-    :degraded => :yellow,
-    :critical => :orange,
-    :failed => :red
-)
-
-colors = [health_colors[h] for h in health_hist]
-
-p_phase = scatter(
-    θ_hist .- θ_target_hist, ω_hist,
-    color=colors,
-    marker_z=1:length(θ_hist),
-    xlabel="Angle Error θ (°)",
-    ylabel="Angular velocity ω (°/s)",
-    title="Phase Portrait (State Space Trajectory)",
-    label="",
-    colorbar=true,
-    colorbar_title="Time step",
-    markersize=3
-)
-# Add target point
-scatter!([0.0], [0.0], color=:blue, marker=:star, markersize=10, label="Target")
-savefig(p_phase, "phase_portrait.png")
-
-# Cumulative reward
-cumulative_reward = cumsum(rewards)
-
-# RMS error over time
-rms_error = sqrt.(cumsum((θ_hist .- θ_target_hist) .^ 2) ./ (1:length(θ_hist)))
-
-# Control effort
-cumulative_control = cumsum(abs.(u_hist))
-
-p_metrics = plot(layout=(3, 1), size=(800, 600))
-plot!(p_metrics[1], cumulative_reward, xlabel="Time step", ylabel="Cumulative Reward", label="", title="Performance Over Time")
-plot!(p_metrics[2], rms_error, xlabel="Time step", ylabel="RMS Error (°)", label="")
-plot!(p_metrics[3], cumulative_control, xlabel="Time step", ylabel="Cumulative |u|", label="")
-
-savefig(p_metrics, "cumulative_metrics.png")
-
-# # Compute dominant health belief at each timestep
-# dominant_health = [pomdp.health_states[argmax(health_beliefs[t, :])] for t in 1:size(health_beliefs, 1)]
-
-# # Plot action vs dominant belief
-# p_action_health = scatter(
-#     1:length(u_hist),
-#     u_hist,
-#     group=dominant_health,
-#     xlabel="Time step",
-#     ylabel="Control Torque (N⋅m)",
-#     title="Control Actions vs. Believed Health State",
-#     legend=:right,
-#     markersize=4,
-#     alpha=0.6
-# )
-# savefig(p_action_health, "./action_vs_health_belief.png")
