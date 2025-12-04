@@ -153,11 +153,55 @@ health_hist = [s.health for s in states]
 u_hist = [pomdp.actions[a] for a in actions]
 θ_target_hist = [rad2deg(pomdp.target_angles[s.θ_target_idx]) for s in states]
 
+# Calculate continuous values (before discretization)
+# This shows what the actual physics predicts vs. what gets stored in discrete bins
+θ_cont_hist = zeros(length(states))
+ω_cont_hist = zeros(length(states))
+
+θ_cont_hist[1] = rad2deg(states[1].θ)
+ω_cont_hist[1] = rad2deg(states[1].ω)
+
+for i in 1:length(actions)
+    s = states[i]
+    a = actions[i]
+    u = pomdp.actions[a]
+
+    # Get actual torque based on health
+    η = pomdp.health_efficiency[s.health]
+    τ_actual = η * u
+
+    # Calculate next continuous state (before discretization)
+    θ_cont = s.θ + s.ω * pomdp.dt
+    ω_cont = s.ω + (τ_actual / pomdp.J_sc) * pomdp.dt
+
+    # Wrap angle and clamp velocity (same as in transition function)
+    θ_cont = mod(θ_cont + π, 2π) - π
+    ω_cont = clamp(ω_cont, -pomdp.ω_max, pomdp.ω_max)
+
+    # Store continuous values (in degrees)
+    θ_cont_hist[i+1] = rad2deg(θ_cont)
+    ω_cont_hist[i+1] = rad2deg(ω_cont)
+end
+
 # Diagnostic printout
 println("\n=== DIAGNOSTICS ===")
 println("Number of steps: ", length(states))
 println("Initial state: θ=$(θ_hist[1]), ω=$(ω_hist[1]), health=$(health_hist[1])")
 println("Final state: θ=$(θ_hist[end]), ω=$(ω_hist[end]), health=$(health_hist[end])")
+
+# Show discretization effects
+θ_diff = θ_cont_hist .- θ_hist
+ω_diff = ω_cont_hist .- ω_hist
+println("\n=== DISCRETIZATION EFFECTS ===")
+println("Angle discretization error (continuous - discretized):")
+println("  Mean: $(mean(abs.(θ_diff))) °")
+println("  Max: $(maximum(abs.(θ_diff))) °")
+println("  Bin width: $(360 / pomdp.n_θ) ° ($(pomdp.n_θ) bins)")
+println("\nAngular velocity discretization error:")
+println("  Mean: $(mean(abs.(ω_diff))) °/s")
+println("  Max: $(maximum(abs.(ω_diff))) °/s")
+println("  Bin width: $(2 * rad2deg(pomdp.ω_max) / pomdp.n_ω) °/s ($(pomdp.n_ω) bins)")
+
 println("\nActions taken: ", unique(actions))
 println("Action distribution: ")
 for a in unique(actions)
@@ -172,9 +216,15 @@ end
 # Plot
 using Plots
 
-p1 = plot(θ_hist, label="Angle θ", xlabel="Time step", ylabel="Angle (°)")
+p1 = plot(θ_hist, label="Angle θ (discretized)", xlabel="Time step", ylabel="Angle (°)",
+          linewidth=2, color=:blue, alpha=0.7)
+plot!(p1, θ_cont_hist, label="Angle θ (continuous)", linestyle=:dot, color=:cyan, linewidth=2)
 plot!(p1, θ_target_hist, label="Target θ", linestyle=:dash, color=:red, linewidth=2)
-p2 = plot(ω_hist, label="Angular velocity ω", xlabel="Time step", ylabel="ω (°/s)")
+
+p2 = plot(ω_hist, label="Angular velocity ω (discretized)", xlabel="Time step", ylabel="ω (°/s)",
+          linewidth=2, color=:green, alpha=0.7)
+plot!(p2, ω_cont_hist, label="Angular velocity ω (continuous)", linestyle=:dot, color=:lime, linewidth=2)
+
 p3 = plot(u_hist, label="Control torque", xlabel="Time step", ylabel="Torque (N⋅m)")
 p4 = plot([string(h) for h in health_hist], label="Health state", xlabel="Time step", ylabel="Health", legend=false)
 
@@ -231,10 +281,18 @@ p_phase = scatter(
     xlabel="Angle Error θ (°)",
     ylabel="Angular velocity ω (°/s)",
     title="Phase Portrait (State Space Trajectory)",
-    label="",
+    label="Discretized",
     colorbar=true,
     colorbar_title="Time step",
-    markersize=3
+    markersize=3,
+    alpha=0.6
+)
+# Add continuous trajectory
+scatter!(p_phase, θ_cont_hist .- θ_target_hist, ω_cont_hist,
+    color=:cyan,
+    markersize=1,
+    alpha=0.3,
+    label="Continuous"
 )
 # Add target point
 scatter!([0.0], [0.0], color=:blue, marker=:star, markersize=10, label="Target")
