@@ -7,6 +7,9 @@ using Parameters
 
 
 export SpacecraftPOMDP, SpacecraftObs, SpacecraftState
+export save_simulation_results, extract_health_beliefs
+
+include("plotting.jl")
 
 
 struct SpacecraftState
