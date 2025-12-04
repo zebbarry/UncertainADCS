@@ -57,7 +57,7 @@ end
 
     # Degradation parameters
     k1::Float64 = 0.0             # natural degradation rate
-    k2::Float64 = 0.05            # usage-dependent degradation
+    k2::Float64 = 0.08            # usage-dependent degradation
 
     # Observation noise
     σ_θ::Float64 = 0.05            # angle measurement noise (rad)

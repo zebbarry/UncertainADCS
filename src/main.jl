@@ -70,7 +70,7 @@ pomdp = SpacecraftPOMDP()
 # TO USE ALL SOLVERS TOGETHER:
 
 # Configuration
-num_simulations = 30  # Number of simulation runs per solver
+num_simulations = 45  # Number of simulation runs per solver
 num_steps = 3000      # Steps per simulation
 seeds = 1:num_simulations  # Use same seed sequence for all solvers
 
@@ -81,7 +81,7 @@ solvers = Dict(
     "QMDP" => QMDPSolver(max_iterations=1000, verbose=true),
     # "PBVI" => PBVISolver(max_iterations=30, verbose=true),
     # "FIB" => FIBSolver(max_iterations=30, verbose=true),
-    "SARSOP" => SARSOPSolver(precision=1e-2, verbose=true, timeout=300),
+    "SARSOP" => SARSOPSolver(precision=1e-2, verbose=true, timeout=600),
     "POMCP" => POMCPSolver(tree_queries=1000, c=10.0, max_depth=30, rng=MersenneTwister(42))
 )
 
