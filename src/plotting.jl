@@ -21,7 +21,7 @@ Creates a folder `base_dir/solver_name/` containing:
 - `cumulative_metrics.png`: Cumulative reward, RMS error, and control effort
 - `statistics.txt`: Text file with key metrics and statistics
 """
-function save_simulation_results(hist, solver_name::String, pomdp; base_dir="results")
+function save_simulation_results(hist, solver_name::String, pomdp, solve_time::Float64, sim_time::Float64; base_dir="results")
     # Create output directory
     output_dir = joinpath(base_dir, solver_name)
     mkpath(output_dir)
@@ -45,7 +45,7 @@ function save_simulation_results(hist, solver_name::String, pomdp; base_dir="res
 
     # ====== Plot 1: Main simulation plots ======
     p1 = plot(θ_hist, label="Angle θ", xlabel="Time step", ylabel="Angle (°)")
-    plot!(p1, θ_target_hist, label="Target θ", linestyle=:dash, color=:red, linewidth=2)
+    plot!(p1, θ_target_hist, label="Target θ", color=:red, linewidth=0.5)
     p2 = plot(ω_hist, label="Angular velocity ω", xlabel="Time step", ylabel="ω (°/s)")
     p3 = plot(u_hist, label="Control torque", xlabel="Time step", ylabel="Torque (N⋅m)")
     p4 = plot([string(h) for h in health_hist], label="Health state", xlabel="Time step", ylabel="Health", legend=false)
@@ -121,6 +121,7 @@ function save_simulation_results(hist, solver_name::String, pomdp; base_dir="res
         # Basic info
         println(io, "Simulation Duration:")
         println(io, "  Number of steps: $(length(states))")
+        println(io, "  Sim time: $(sim_time)")
         println(io)
 
         # Initial and final states
@@ -131,7 +132,7 @@ function save_simulation_results(hist, solver_name::String, pomdp; base_dir="res
 
         # Action distribution
         println(io, "Action Distribution:")
-        action_counts = Dict{Int, Int}()
+        action_counts = Dict{Int,Int}()
         for a in actions
             action_counts[a] = get(action_counts, a, 0) + 1
         end
@@ -144,6 +145,7 @@ function save_simulation_results(hist, solver_name::String, pomdp; base_dir="res
 
         # Performance metrics
         println(io, "Performance Metrics:")
+        println(io, "  Solver Time: $(solve_time)")
         println(io, "  Total reward: $(round(sum(rewards), digits=2))")
         println(io, "  Final cumulative reward: $(round(cumulative_reward[end], digits=2))")
         println(io, "  Average reward per step: $(round(mean(rewards), digits=2))")
@@ -167,7 +169,7 @@ function save_simulation_results(hist, solver_name::String, pomdp; base_dir="res
 
         # Health state distribution
         println(io, "Health State Distribution:")
-        health_counts = Dict{Symbol, Int}()
+        health_counts = Dict{Symbol,Int}()
         for h in health_hist
             health_counts[h] = get(health_counts, h, 0) + 1
         end
@@ -202,7 +204,7 @@ function save_simulation_results(hist, solver_name::String, pomdp; base_dir="res
         "total_control_effort" => sum(abs.(u_hist)),
         "mean_angle_error" => mean(θ_hist .- θ_target_hist),
         "avg_belief_entropy" => sum([-sum(health_beliefs[t, :] .* log.(health_beliefs[t, :] .+ 1e-10))
-                                      for t in 1:size(health_beliefs, 1)]) / size(health_beliefs, 1)
+                                     for t in 1:size(health_beliefs, 1)]) / size(health_beliefs, 1)
     )
 end
 
