@@ -71,7 +71,7 @@ pomdp = SpacecraftPOMDP()
 
 # Configuration
 num_simulations = 30  # Number of simulation runs per solver
-num_steps = 5000      # Steps per simulation
+num_steps = 3000      # Steps per simulation
 seeds = 1:num_simulations  # Use same seed sequence for all solvers
 
 # Create solvers with RNG support
@@ -94,13 +94,7 @@ for (name, solver) in solvers
     println("="^70)
 
     # Solve once with the policy
-    solve_time = @elapsed begin
-        # For online solvers, use a fresh RNG for solving
-        if name == "POMCP"
-            solver = POMCPSolver(tree_queries=1000, c=10.0, max_depth=30, rng=MersenneTwister(42))
-        end
-        policies[name] = solve(solver, pomdp)
-    end
+    solve_time = @elapsed policies[name] = solve(solver, pomdp)
 
     println("Solving completed in $(round(solve_time, digits=2))s")
 

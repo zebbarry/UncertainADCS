@@ -33,11 +33,11 @@ end
 
     # State bounds
     θ_max::Float64 = π
-    ω_max::Float64 = 20 * (π / 180)         # rad/s
+    ω_max::Float64 = 18 * (π / 180)         # rad/s
 
     # Discretization (reduced for faster SARSOP/PBVI solving)
     n_θ::Int = 36                  # number of angle bins (~10° resolution)
-    n_ω::Int = 15                  # number of angular velocity bins
+    n_ω::Int = 20                  # number of angular velocity bins
 
     # Actions: discretized torque levels
     actions::Vector{Float64} = [-u_max, -u_max / 2, 0.0, u_max / 2, u_max]
@@ -51,13 +51,13 @@ end
     health_efficiency::Dict{Symbol,Float64} = Dict(
         :healthy => 1.0,
         :degraded => 0.7,
-        :critical => 0.4,
+        :critical => 0.5,
         :failed => 0.0
     )
 
     # Degradation parameters
     k1::Float64 = 0.0             # natural degradation rate
-    k2::Float64 = 0.01            # usage-dependent degradation
+    k2::Float64 = 0.05            # usage-dependent degradation
 
     # Observation noise
     σ_θ::Float64 = 0.05            # angle measurement noise (rad)
@@ -67,8 +67,8 @@ end
     w_θ::Float64 = 10.0           # attitude error weight
     w_ω::Float64 = 0.1            # angular velocity weight
     w_u::Float64 = 0.0            # control effort weight
-    w_fail::Float64 = 10000.0     # failure penalty
-    w_success::Float64 = 50.0     # success reward
+    w_fail::Float64 = 10000.0      # failure penalty
+    w_success::Float64 = 500.0    # success reward
 
     # success bounds
     θ_success_bound::Float64 = 10
