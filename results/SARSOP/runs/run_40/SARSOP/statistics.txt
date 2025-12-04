@@ -1,0 +1,45 @@
+============================================================
+Simulation Statistics for SARSOP
+============================================================
+
+Simulation Duration:
+  Number of steps: 936
+  Sim time: 0.0
+
+State Information:
+  Initial state: θ=56.57°, ω=0.95°/s, health=healthy
+  Final state:   θ=-87.43°, ω=-4.74°/s, health=failed
+
+Action Distribution:
+  Action 1 (u=-4.0 N⋅m): 14 times (1.5%)
+  Action 2 (u=-2.0 N⋅m): 3 times (0.3%)
+  Action 3 (u=0.0 N⋅m): 905 times (96.8%)
+  Action 5 (u=4.0 N⋅m): 13 times (1.4%)
+
+Performance Metrics:
+  Solver Time: 0.0
+  Total reward: 321110.7
+  Final cumulative reward: 321110.7
+  Average reward per step: 343.43
+
+Tracking Performance:
+  Mean angle error: 5.82°
+  Std angle error: 74.46°
+  Max absolute error: 270.0°
+  Final RMS error: 74.65°
+
+Control Effort:
+  Total control effort: 114.0
+  Average |u|: 0.12
+  Max |u|: 4.0
+
+Health State Distribution:
+  healthy: 2 steps (0.2%)
+  degraded: 576 steps (61.5%)
+  critical: 357 steps (38.1%)
+  failed: 1 steps (0.1%)
+
+Belief Quality:
+  Average belief entropy: 0.799 (lower = more confident)
+
+============================================================
