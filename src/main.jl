@@ -9,10 +9,20 @@ using Statistics
 
 
 using POMDPTools
-function run_simulation(pomdp, policy, num_steps=100, rng=Random.GLOBAL_RNG)
+using ParticleFilters
+
+function run_simulation(pomdp, policy, num_steps=100, rng=Random.GLOBAL_RNG, updater=nothing)
     println("Running simulation for $num_steps steps...")
-    sim = HistoryRecorder(max_steps=num_steps, rng=rng)
-    hist = simulate(sim, pomdp, policy)
+
+    if updater !== nothing
+        # Use the provided updater for belief tracking
+        sim = HistoryRecorder(max_steps=num_steps, rng=rng)
+        hist = simulate(sim, pomdp, policy, updater)
+    else
+        # Use default belief updater
+        sim = HistoryRecorder(max_steps=num_steps, rng=rng)
+        hist = simulate(sim, pomdp, policy)
+    end
 
     return hist
 end
@@ -55,6 +65,7 @@ pomdp = SpacecraftPOMDP()
 #     rng=MersenneTwister(1)
 # )
 # policy = solve(pomcp_solver, pomdp)
+# # Note: BootstrapFilter updater is created separately when running simulations
 
 
 ############################################# ADDING PBVI and FIB and running solvers together: #############################################
@@ -82,7 +93,12 @@ solvers = Dict(
     # "PBVI" => PBVISolver(max_iterations=30, verbose=true),
     # "FIB" => FIBSolver(max_iterations=30, verbose=true),
     # "SARSOP" => SARSOPSolver(precision=1e-2, verbose=true, timeout=600),
-    "POMCP" => POMCPSolver(tree_queries=1000, c=10.0, max_depth=30, rng=MersenneTwister(42))
+    "POMCP" => POMCPSolver(
+        tree_queries=1000,
+        c=10.0,
+        max_depth=30,
+        rng=MersenneTwister(42)
+    )
 )
 
 policies = Dict()
@@ -111,9 +127,12 @@ for (name, solver) in solvers
         # Create RNG for this simulation
         rng = MersenneTwister(seed)
 
-        # Run simulation with this seed
+        # Create BootstrapFilter updater with 10000 particles to avoid particle depletion for POMCP
+        updater = BootstrapFilter(pomdp, 10000, rng=rng)
+
+        # Run simulation with this seed and updater
         sim_time = @elapsed begin
-            hist = run_simulation(pomdp, policies[name], num_steps, rng)
+            hist = run_simulation(pomdp, policies[name], num_steps, rng, updater)
         end
 
         push!(all_histories[name], hist)
