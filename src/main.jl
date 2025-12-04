@@ -103,6 +103,7 @@ for (name, solver) in solvers
     all_histories[name] = []
 
     simulation_times = Float64[]
+    total_rewards = Float64[]
 
     for (sim_idx, seed) in enumerate(seeds)
         print("  Simulation $sim_idx/$num_simulations (seed=$seed)... ")
@@ -118,6 +119,9 @@ for (name, solver) in solvers
         push!(all_histories[name], hist)
         push!(simulation_times, sim_time)
 
+        # Track total reward for this simulation
+        push!(total_rewards, sum(reward_hist(hist)))
+
         println("done ($(round(sim_time, digits=2))s)")
     end
 
@@ -129,6 +133,12 @@ for (name, solver) in solvers
 
     # Save aggregated results
     save_multi_simulation_results(all_histories[name], name, pomdp, solve_time, total_sim_time)
+
+    # Find and save the best performing simulation
+    best_idx = argmax(total_rewards)
+    best_reward = total_rewards[best_idx]
+    println("\n=== Saving detailed results for best run (simulation $best_idx, reward=$(round(best_reward, digits=2))) ===")
+    save_simulation_results(all_histories[name][best_idx], "$(name)_best", pomdp, solve_time, simulation_times[best_idx])
 end
 
 ############################################# END OF [ADDING PBVI and FIB and running solvers together] #############################################
