@@ -1,0 +1,45 @@
+============================================================
+Simulation Statistics for QMDP
+============================================================
+
+Simulation Duration:
+  Number of steps: 1274
+  Sim time: 0.0
+
+State Information:
+  Initial state: θ=56.57°, ω=0.95°/s, health=healthy
+  Final state:   θ=97.71°, ω=-4.74°/s, health=failed
+
+Action Distribution:
+  Action 1 (u=-4.0 N⋅m): 21 times (1.6%)
+  Action 2 (u=-2.0 N⋅m): 15 times (1.2%)
+  Action 3 (u=0.0 N⋅m): 1205 times (94.7%)
+  Action 5 (u=4.0 N⋅m): 32 times (2.5%)
+
+Performance Metrics:
+  Solver Time: 0.0
+  Total reward: 398841.99
+  Final cumulative reward: 398841.99
+  Average reward per step: 313.31
+
+Tracking Performance:
+  Mean angle error: 2.79°
+  Std angle error: 83.64°
+  Max absolute error: 270.0°
+  Final RMS error: 83.65°
+
+Control Effort:
+  Total control effort: 242.0
+  Average |u|: 0.19
+  Max |u|: 4.0
+
+Health State Distribution:
+  healthy: 127 steps (10.0%)
+  degraded: 329 steps (25.8%)
+  critical: 817 steps (64.1%)
+  failed: 1 steps (0.1%)
+
+Belief Quality:
+  Average belief entropy: 0.791 (lower = more confident)
+
+============================================================

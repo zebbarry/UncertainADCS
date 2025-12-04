@@ -1,0 +1,55 @@
+======================================================================
+AGGREGATED STATISTICS FOR QMDP
+======================================================================
+
+Experimental Setup:
+  Number of simulation runs: 45
+  Steps per simulation: 302
+  Seeds used: 1:45
+  Solver time: 7.07s
+  Total simulation time: 19.08s
+  Average simulation time: 0.42s
+
+Performance Metrics (across 45 runs):
+----------------------------------------------------------------------
+Total Reward:
+  Mean: 221965.285
+  Std Dev: 178578.403
+  Min: -10606.126
+  Max: 667382.927
+  95% CI: [169788.328, 274142.242]
+
+Final RMS Error (°):
+  Mean: 79.841
+  Std Dev: 13.196
+  Min: 41.445
+  Max: 107.729
+  95% CI: [75.986, 83.697]
+
+Total Control Effort:
+  Mean: 134.489
+  Std Dev: 70.82
+  Min: 20.0
+  Max: 290.0
+  95% CI: [113.797, 155.181]
+
+Mean Angle Error (°):
+  Mean: 7.293
+  Std Dev: 13.422
+  Min: -4.508
+  Max: 89.729
+  95% CI: [3.371, 11.215]
+
+Average Belief Entropy:
+  Mean: 0.749
+  Std Dev: 0.097
+  Min: 0.318
+  Max: 0.829
+  95% CI: [0.721, 0.778]
+
+Stability Analysis:
+  Reward CV: 80.45% (coefficient of variation)
+  Error CV: 16.53%
+  (Lower CV indicates more consistent performance)
+
+======================================================================

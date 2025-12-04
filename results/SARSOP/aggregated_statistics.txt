@@ -1,0 +1,55 @@
+======================================================================
+AGGREGATED STATISTICS FOR SARSOP
+======================================================================
+
+Experimental Setup:
+  Number of simulation runs: 45
+  Steps per simulation: 302
+  Seeds used: 1:45
+  Solver time: 827.88s
+  Total simulation time: 926.81s
+  Average simulation time: 20.6s
+
+Performance Metrics (across 45 runs):
+----------------------------------------------------------------------
+Total Reward:
+  Mean: 234481.915
+  Std Dev: 183570.094
+  Min: -10606.126
+  Max: 667355.694
+  95% CI: [180846.488, 288117.343]
+
+Final RMS Error (°):
+  Mean: 79.707
+  Std Dev: 13.018
+  Min: 41.445
+  Max: 108.007
+  95% CI: [75.903, 83.51]
+
+Total Control Effort:
+  Mean: 136.711
+  Std Dev: 71.913
+  Min: 20.0
+  Max: 284.0
+  95% CI: [115.7, 157.723]
+
+Mean Angle Error (°):
+  Mean: 7.228
+  Std Dev: 13.41
+  Min: -4.508
+  Max: 89.729
+  95% CI: [3.309, 11.146]
+
+Average Belief Entropy:
+  Mean: 0.744
+  Std Dev: 0.1
+  Min: 0.318
+  Max: 0.919
+  95% CI: [0.715, 0.773]
+
+Stability Analysis:
+  Reward CV: 78.29% (coefficient of variation)
+  Error CV: 16.33%
+  (Lower CV indicates more consistent performance)
+
+======================================================================
