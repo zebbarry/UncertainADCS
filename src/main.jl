@@ -127,7 +127,7 @@ for (name, solver) in solvers
         # Create RNG for this simulation
         rng = MersenneTwister(seed)
 
-        # Create BootstrapFilter updater with 10000 particles to avoid particle depletion
+        # Create BootstrapFilter updater with 10000 particles to avoid particle depletion for POMCP
         updater = BootstrapFilter(pomdp, 10000, rng=rng)
 
         # Run simulation with this seed and updater
