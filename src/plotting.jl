@@ -341,13 +341,11 @@ function save_multi_simulation_results(histories, solver_name::String, pomdp, so
         bins=20,
         xlabel="Total Reward",
         ylabel="Frequency",
-        title="$solver_name: Distribution of Total Rewards (n=$num_sims)",
+        title="$solver_name: Distribution of Total Rewards (n=$num_sims)\nμ=$(round(reward_stats.mean, digits=1)), σ=$(round(reward_stats.std, digits=1))",
         legend=false,
         normalize=:probability
     )
-    vline!([reward_stats.mean], linewidth=2, color=:red, label="Mean")
-    annotate!(reward_stats.mean, maximum(p_reward[1][1][:y]) * 0.9,
-              text("μ=$(round(reward_stats.mean, digits=1))\nσ=$(round(reward_stats.std, digits=1))", 8, :left))
+    vline!([reward_stats.mean], linewidth=2, color=:red, label="Mean", linestyle=:dash)
     savefig(p_reward, joinpath(output_dir, "reward_distribution.png"))
     println("  ✓ Saved reward_distribution.png")
 
@@ -357,13 +355,11 @@ function save_multi_simulation_results(histories, solver_name::String, pomdp, so
         bins=20,
         xlabel="Final RMS Error (°)",
         ylabel="Frequency",
-        title="$solver_name: Distribution of RMS Errors (n=$num_sims)",
+        title="$solver_name: Distribution of RMS Errors (n=$num_sims)\nμ=$(round(error_stats.mean, digits=2))°, σ=$(round(error_stats.std, digits=2))°",
         legend=false,
         normalize=:probability
     )
-    vline!([error_stats.mean], linewidth=2, color=:red, label="Mean")
-    annotate!(error_stats.mean, maximum(p_error[1][1][:y]) * 0.9,
-              text("μ=$(round(error_stats.mean, digits=2))°\nσ=$(round(error_stats.std, digits=2))°", 8, :left))
+    vline!([error_stats.mean], linewidth=2, color=:red, label="Mean", linestyle=:dash)
     savefig(p_error, joinpath(output_dir, "error_distribution.png"))
     println("  ✓ Saved error_distribution.png")
 
