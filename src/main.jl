@@ -47,12 +47,14 @@ pomdp = SpacecraftPOMDP()
 # policy = solve(sarsop_solver, pomdp)
 
 # # Online solver: POMCP
+# using ParticleFilters  # For BootstrapFilter
 # println("Setting up POMCP...")
 # pomcp_solver = POMCPSolver(
 #     tree_queries=1000,
 #     c=10.0,
 #     max_depth=50,
-#     rng=MersenneTwister(1)
+#     rng=MersenneTwister(1),
+#     updater=BootstrapFilter(pomdp, 5000)  # Use BootstrapFilter with more particles
 # )
 # policy = solve(pomcp_solver, pomdp)
 
@@ -77,12 +79,20 @@ seeds = 1:num_simulations  # Use same seed sequence for all solvers
 # Create solvers with RNG support
 # Note: For offline solvers (QMDP, SARSOP), the RNG only affects tie-breaking during solving
 #       For online solvers (POMCP), the RNG affects tree search
+using ParticleFilters  # For BootstrapFilter
+
 solvers = Dict(
     # "QMDP" => QMDPSolver(max_iterations=1000, verbose=true),
     # "PBVI" => PBVISolver(max_iterations=30, verbose=true),
     # "FIB" => FIBSolver(max_iterations=30, verbose=true),
     # "SARSOP" => SARSOPSolver(precision=1e-2, verbose=true, timeout=600),
-    "POMCP" => POMCPSolver(tree_queries=1000, c=10.0, max_depth=30, rng=MersenneTwister(42))
+    "POMCP" => POMCPSolver(
+        tree_queries=1000,
+        c=10.0,
+        max_depth=30,
+        rng=MersenneTwister(42),
+        updater=BootstrapFilter(pomdp, 10000)  # Use BootstrapFilter with 10000 particles
+    )
 )
 
 policies = Dict()
