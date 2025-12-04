@@ -12,7 +12,7 @@ using POMDPTools
 function run_simulation(pomdp, policy, num_steps=100, rng=Random.GLOBAL_RNG)
     println("Running simulation for $num_steps steps...")
     sim = HistoryRecorder(max_steps=num_steps, rng=rng)
-    hist = simulate(sim, pomdp, policy, rng=rng)
+    hist = simulate(sim, pomdp, policy)
 
     return hist
 end
