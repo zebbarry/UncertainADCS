@@ -7,6 +7,8 @@ using PointBasedValueIteration
 using FIB
 using Statistics
 
+include("policy_utils.jl")
+
 # Create the POMDP
 pomdp = SpacecraftPOMDP()
 
@@ -27,35 +29,30 @@ pomdp = SpacecraftPOMDP()
 # end
 
 # Solve with QMDP (fast, approximate)
-println("Solving with QMDP...")
 qmdp_solver = QMDPSolver(max_iterations=1000, verbose=true)
-policy = solve(qmdp_solver, pomdp)
+policy = get_policy("QMDP", qmdp_solver, pomdp)
 
 # Solve with SARSOP (slower, more accurate)
-# println("Solving with SARSOP...")
 # sarsop_solver = SARSOPSolver(precision=1e-3, verbose=true)
-# policy = solve(sarsop_solver, pomdp)
+# policy = get_policy("SARSOP", sarsop_solver, pomdp)
 
 # # Online solver: POMCP
-# println("Setting up POMCP...")
 # pomcp_solver = POMCPSolver(
 #     tree_queries=1000,
 #     c=10.0,
 #     max_depth=50,
 #     rng=MersenneTwister(1)
 # )
-# policy = solve(pomcp_solver, pomdp)
+# policy = get_policy("POMCP", pomcp_solver, pomdp)
 
 
 ############################################# ADDING PBVI and FIB and running solvers together: #############################################
 
-# println("Solving with PBVI...")
 # pbvi_solver = PBVISolver(max_iter=50, verbose=true)
-# policy_pbvi = solve(pbvi_solver, pomdp)
+# policy_pbvi = get_policy("PBVI", pbvi_solver, pomdp)
 
-# println("Solving with FIB...")
 # fib_solver = FIBSolver(max_iter=50)
-# policy_fib = solve(fib_solver, pomdp)
+# policy_fib = get_policy("FIB", fib_solver, pomdp)
 
 # TO USE ALL SOLVERS TOGETHER:
 
@@ -70,8 +67,7 @@ policy = solve(qmdp_solver, pomdp)
 # policies = Dict()
 
 # for (name, solver) in solvers
-#     println("\n=== Solving with $name ===")
-#     policies[name] = solve(solver, pomdp)
+#     policies[name] = get_policy(name, solver, pomdp)
 # end
 
 ############################################# END OF [ADDING PBVI and FIB and running solvers together] #############################################
