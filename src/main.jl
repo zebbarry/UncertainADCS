@@ -9,10 +9,20 @@ using Statistics
 
 
 using POMDPTools
-function run_simulation(pomdp, policy, num_steps=100, rng=Random.GLOBAL_RNG)
+using ParticleFilters
+
+function run_simulation(pomdp, policy, num_steps=100, rng=Random.GLOBAL_RNG, updater=nothing)
     println("Running simulation for $num_steps steps...")
-    sim = HistoryRecorder(max_steps=num_steps, rng=rng)
-    hist = simulate(sim, pomdp, policy)
+
+    if updater !== nothing
+        # Use the provided updater for belief tracking
+        sim = HistoryRecorder(max_steps=num_steps, rng=rng)
+        hist = simulate(sim, pomdp, policy, updater)
+    else
+        # Use default belief updater
+        sim = HistoryRecorder(max_steps=num_steps, rng=rng)
+        hist = simulate(sim, pomdp, policy)
+    end
 
     return hist
 end
@@ -47,16 +57,15 @@ pomdp = SpacecraftPOMDP()
 # policy = solve(sarsop_solver, pomdp)
 
 # # Online solver: POMCP
-# using ParticleFilters  # For BootstrapFilter
 # println("Setting up POMCP...")
 # pomcp_solver = POMCPSolver(
 #     tree_queries=1000,
 #     c=10.0,
 #     max_depth=50,
-#     rng=MersenneTwister(1),
-#     updater=BootstrapFilter(pomdp, 5000)  # Use BootstrapFilter with more particles
+#     rng=MersenneTwister(1)
 # )
 # policy = solve(pomcp_solver, pomdp)
+# # Note: BootstrapFilter updater is created separately when running simulations
 
 
 ############################################# ADDING PBVI and FIB and running solvers together: #############################################
@@ -79,8 +88,6 @@ seeds = 1:num_simulations  # Use same seed sequence for all solvers
 # Create solvers with RNG support
 # Note: For offline solvers (QMDP, SARSOP), the RNG only affects tie-breaking during solving
 #       For online solvers (POMCP), the RNG affects tree search
-using ParticleFilters  # For BootstrapFilter
-
 solvers = Dict(
     # "QMDP" => QMDPSolver(max_iterations=1000, verbose=true),
     # "PBVI" => PBVISolver(max_iterations=30, verbose=true),
@@ -90,8 +97,7 @@ solvers = Dict(
         tree_queries=1000,
         c=10.0,
         max_depth=30,
-        rng=MersenneTwister(42),
-        updater=BootstrapFilter(pomdp, 10000)  # Use BootstrapFilter with 10000 particles
+        rng=MersenneTwister(42)
     )
 )
 
@@ -121,9 +127,12 @@ for (name, solver) in solvers
         # Create RNG for this simulation
         rng = MersenneTwister(seed)
 
-        # Run simulation with this seed
+        # Create BootstrapFilter updater with 10000 particles to avoid particle depletion
+        updater = BootstrapFilter(pomdp, 10000, rng=rng)
+
+        # Run simulation with this seed and updater
         sim_time = @elapsed begin
-            hist = run_simulation(pomdp, policies[name], num_steps, rng)
+            hist = run_simulation(pomdp, policies[name], num_steps, rng, updater)
         end
 
         push!(all_histories[name], hist)
