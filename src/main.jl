@@ -33,7 +33,7 @@ policy = solve(qmdp_solver, pomdp)
 
 # Solve with SARSOP (slower, more accurate)
 # println("Solving with SARSOP...")
-# sarsop_solver = SARSOPSolver(precision=1e-3, verbose=true)
+# sarsop_solver = SARSOPSolver(precision=1e-2, verbose=true, timeout=300.0)  # Relaxed precision for faster solving
 # policy = solve(sarsop_solver, pomdp)
 
 # # Online solver: POMCP
@@ -50,20 +50,20 @@ policy = solve(qmdp_solver, pomdp)
 ############################################# ADDING PBVI and FIB and running solvers together: #############################################
 
 # println("Solving with PBVI...")
-# pbvi_solver = PBVISolver(max_iter=50, verbose=true)
+# pbvi_solver = PBVISolver(max_iter=30, verbose=true)  # Reduced iterations for faster solving
 # policy_pbvi = solve(pbvi_solver, pomdp)
 
 # println("Solving with FIB...")
-# fib_solver = FIBSolver(max_iter=50)
+# fib_solver = FIBSolver(max_iter=30)  # Reduced iterations for faster solving
 # policy_fib = solve(fib_solver, pomdp)
 
 # TO USE ALL SOLVERS TOGETHER:
 
 # solvers = Dict(
 #     "QMDP"   => QMDPSolver(max_iterations=1000, verbose=true),
-#     "SARSOP" => SARSOPSolver(precision=1e-3, verbose=true),
-#     "PBVI"   => PBVISolver(max_iter=50, verbose=true),
-#     "FIB"    => FIBSolver(max_iter=50),
+#     "SARSOP" => SARSOPSolver(precision=1e-2, verbose=true, timeout=300.0),  # Optimized for speed
+#     "PBVI"   => PBVISolver(max_iter=30, verbose=true),  # Reduced iterations
+#     "FIB"    => FIBSolver(max_iter=30),  # Reduced iterations
 #     "POMCP"  => POMCPSolver(tree_queries=1000, c=10.0, max_depth=50, rng=MersenneTwister(1))
 # )
 

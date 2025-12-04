@@ -35,9 +35,9 @@ end
     θ_max::Float64 = π
     ω_max::Float64 = 0.4           # rad/s
 
-    # Discretization
-    n_θ::Int = 72                  # number of angle bins
-    n_ω::Int = 25                  # number of angular velocity bins
+    # Discretization (reduced for faster SARSOP/PBVI solving)
+    n_θ::Int = 36                  # number of angle bins (~10° resolution)
+    n_ω::Int = 15                  # number of angular velocity bins
 
     # Actions: discretized torque levels
     actions::Vector{Float64} = [-u_max, -u_max / 2, 0.0, u_max / 2, u_max]
@@ -273,22 +273,45 @@ function POMDPs.observation(pomdp::SpacecraftPOMDP, a::Int, sp::SpacecraftState)
     θ_error_dist = Normal(θ_error, pomdp.σ_θ)
     ω_dist = Normal(sp.ω, pomdp.σ_ω)
 
-    # For discrete observations, discretize the space
-    obs_list = observations(pomdp)
-    probs = zeros(length(obs_list))
+    # OPTIMIZATION: Only compute probabilities for nearby observations
+    # Window size: ±4 bins captures >99.9% of probability mass (>4σ for both dimensions)
+    window_size = 4
 
-    for (i, o) in enumerate(obs_list)
-        # Probability is product of independent Gaussians
-        # Use discretization bins
-        θ_error_width = 2 * pomdp.θ_max / pomdp.n_θ
-        ω_width = 2 * pomdp.ω_max / pomdp.n_ω
+    # Discretization bin widths
+    θ_error_width = 2 * pomdp.θ_max / pomdp.n_θ
+    ω_width = 2 * pomdp.ω_max / pomdp.n_ω
 
-        # Compute probability that the noisy measurement falls inside observation bin
-        p_θ_error = cdf(θ_error_dist, o.θ_error_obs + θ_error_width / 2) -
-                    cdf(θ_error_dist, o.θ_error_obs - θ_error_width / 2)
-        p_ω = cdf(ω_dist, o.ω_obs + ω_width / 2) - cdf(ω_dist, o.ω_obs - ω_width / 2)
+    # Find the center observation index
+    θ_error_idx_center, ω_idx_center = discretize_continuous(pomdp, θ_error, sp.ω)
 
-        probs[i] = p_θ_error * p_ω
+    # Compute bounds for the window
+    θ_error_idx_min = max(1, θ_error_idx_center - window_size)
+    θ_error_idx_max = min(pomdp.n_θ, θ_error_idx_center + window_size)
+    ω_idx_min = max(1, ω_idx_center - window_size)
+    ω_idx_max = min(pomdp.n_ω, ω_idx_center + window_size)
+
+    # Collect nearby observations and their probabilities
+    obs_list = SpacecraftObs[]
+    probs = Float64[]
+
+    for ω_idx in ω_idx_min:ω_idx_max
+        for θ_error_idx in θ_error_idx_min:θ_error_idx_max
+            # Get the observation at this discrete index
+            θ_error_val, ω_val = continuous_from_discrete(pomdp, θ_error_idx, ω_idx)
+            o = SpacecraftObs(θ_error_val, ω_val)
+
+            # Compute probability that the noisy measurement falls inside observation bin
+            p_θ_error = cdf(θ_error_dist, θ_error_val + θ_error_width / 2) -
+                        cdf(θ_error_dist, θ_error_val - θ_error_width / 2)
+            p_ω = cdf(ω_dist, ω_val + ω_width / 2) - cdf(ω_dist, ω_val - ω_width / 2)
+
+            p_total = p_θ_error * p_ω
+
+            if p_total > 0.0
+                push!(obs_list, o)
+                push!(probs, p_total)
+            end
+        end
     end
 
     # Normalize
@@ -296,9 +319,11 @@ function POMDPs.observation(pomdp::SpacecraftPOMDP, a::Int, sp::SpacecraftState)
     if total > 0.0
         probs ./= total
     else
-        # Fallback: uniform distribution over all observations
+        # Fallback: uniform distribution over a single observation at the center
         @warn "Observation probabilities are <= 0 for state $(sp) and action $(a)."
-        probs .= 1.0 / length(obs_list)
+        θ_error_center, ω_center = continuous_from_discrete(pomdp, θ_error_idx_center, ω_idx_center)
+        obs_list = [SpacecraftObs(θ_error_center, ω_center)]
+        probs = [1.0]
     end
 
     return SparseCat(obs_list, probs)
