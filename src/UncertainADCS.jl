@@ -17,9 +17,8 @@ struct SpacecraftState
 end
 
 struct SpacecraftObs
-    θ_obs::Float64      # observed angle
-    ω_obs::Float64      # observed angular velocity
-    θ_target::Float64   # target angle
+    θ_error_obs::Float64  # observed angular error (θ - θ_target)
+    ω_obs::Float64        # observed angular velocity
 end
 
 
@@ -144,12 +143,11 @@ POMDPs.actionindex(pomdp::SpacecraftPOMDP, a::Int) = a
 function POMDPs.observations(pomdp::SpacecraftPOMDP)
     obs = SpacecraftObs[]
     # Order matters - must match obsindex
-    for θ_target in pomdp.target_angles
-        for ω_idx in 1:pomdp.n_ω
-            for θ_idx in 1:pomdp.n_θ
-                θ, ω = continuous_from_discrete(pomdp, θ_idx, ω_idx)
-                push!(obs, SpacecraftObs(θ, ω, θ_target))
-            end
+    for ω_idx in 1:pomdp.n_ω
+        for θ_error_idx in 1:pomdp.n_θ
+            # Use same discretization for error as for angle
+            θ_error, ω = continuous_from_discrete(pomdp, θ_error_idx, ω_idx)
+            push!(obs, SpacecraftObs(θ_error, ω))
         end
     end
     return obs
@@ -157,13 +155,10 @@ end
 
 function POMDPs.obsindex(pomdp::SpacecraftPOMDP, o::SpacecraftObs)
     # Discretize the observation to nearest grid point
-    θ_idx, ω_idx = discretize_continuous(pomdp, o.θ_obs, o.ω_obs)
-    θ_target_idx = findfirst(==(o.θ_target), pomdp.target_angles)
+    θ_error_idx, ω_idx = discretize_continuous(pomdp, o.θ_error_obs, o.ω_obs)
 
-    # Linear index: observations are indexed by (θ_idx, ω_idx, θ_target_idx)
-    idx = θ_idx +
-          (ω_idx - 1) * pomdp.n_θ +
-          (θ_target_idx - 1) * pomdp.n_θ * pomdp.n_ω
+    # Linear index: observations are indexed by (θ_error_idx, ω_idx)
+    idx = θ_error_idx + (ω_idx - 1) * pomdp.n_θ
     return idx
 end
 
@@ -268,8 +263,11 @@ end
 
 
 function POMDPs.observation(pomdp::SpacecraftPOMDP, a::Int, sp::SpacecraftState)
-    # Gaussian noise on angle and angular velocity
-    θ_dist = Normal(sp.θ, pomdp.σ_θ)
+    # Calculate angular error
+    θ_error = sp.θ - pomdp.target_angles[sp.θ_target_idx]
+
+    # Gaussian noise on angular error and angular velocity
+    θ_error_dist = Normal(θ_error, pomdp.σ_θ)
     ω_dist = Normal(sp.ω, pomdp.σ_ω)
 
     # For discrete observations, discretize the space
@@ -279,19 +277,15 @@ function POMDPs.observation(pomdp::SpacecraftPOMDP, a::Int, sp::SpacecraftState)
     for (i, o) in enumerate(obs_list)
         # Probability is product of independent Gaussians
         # Use discretization bins
-        θ_width = 2 * pomdp.θ_max / pomdp.n_θ
+        θ_error_width = 2 * pomdp.θ_max / pomdp.n_θ
         ω_width = 2 * pomdp.ω_max / pomdp.n_ω
 
         # Compute probability that the noisy measurement falls inside observation bin
-
-        p_θ = cdf(θ_dist, o.θ_obs + θ_width / 2) - cdf(θ_dist, o.θ_obs - θ_width / 2)
+        p_θ_error = cdf(θ_error_dist, o.θ_error_obs + θ_error_width / 2) -
+                    cdf(θ_error_dist, o.θ_error_obs - θ_error_width / 2)
         p_ω = cdf(ω_dist, o.ω_obs + ω_width / 2) - cdf(ω_dist, o.ω_obs - ω_width / 2)
 
-        # Line below: the observed target label is perfectly accurate.
-         # If obs target angle matches actual target → probability 1; otherwise probablity 0
-        p_θ_target = o.θ_target == pomdp.target_angles[sp.θ_target_idx] ? 1.0 : 0.0
-
-        probs[i] = p_θ * p_ω * p_θ_target
+        probs[i] = p_θ_error * p_ω
     end
 
     # Normalize
@@ -299,10 +293,9 @@ function POMDPs.observation(pomdp::SpacecraftPOMDP, a::Int, sp::SpacecraftState)
     if total > 0.0
         probs ./= total
     else
-        # Fallback: uniform distribution over valid observations
-        @warn "Observation probabilities are <= 0 for state $(s) and action $(a)."
-        valid_obs = findall(o -> o.θ_target == pomdp.target_angles[sp.θ_target_idx], obs_list)
-        probs[valid_obs] .= 1.0 / length(valid_obs)
+        # Fallback: uniform distribution over all observations
+        @warn "Observation probabilities are <= 0 for state $(sp) and action $(a)."
+        probs .= 1.0 / length(obs_list)
     end
 
     return SparseCat(obs_list, probs)
