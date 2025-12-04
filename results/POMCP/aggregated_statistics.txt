@@ -1,0 +1,55 @@
+======================================================================
+AGGREGATED STATISTICS FOR POMCP
+======================================================================
+
+Experimental Setup:
+  Number of simulation runs: 45
+  Steps per simulation: 76
+  Seeds used: 1:45
+  Solver time: 0.05s
+  Total simulation time: 1430.7s
+  Average simulation time: 31.79s
+
+Performance Metrics (across 45 runs):
+----------------------------------------------------------------------
+Total Reward:
+  Mean: -5063.319
+  Std Dev: 11633.164
+  Min: -15864.037
+  Max: 36811.198
+  95% CI: [-8462.292, -1664.347]
+
+Final RMS Error (°):
+  Mean: 115.898
+  Std Dev: 27.061
+  Min: 44.155
+  Max: 175.437
+  95% CI: [107.991, 123.804]
+
+Total Control Effort:
+  Mean: 161.911
+  Std Dev: 107.143
+  Min: 36.0
+  Max: 580.0
+  95% CI: [130.606, 193.216]
+
+Mean Angle Error (°):
+  Mean: 56.137
+  Std Dev: 68.868
+  Min: -74.96
+  Max: 173.02
+  95% CI: [36.015, 76.259]
+
+Average Belief Entropy:
+  Mean: 0.549
+  Std Dev: 0.085
+  Min: 0.363
+  Max: 0.671
+  95% CI: [0.524, 0.574]
+
+Stability Analysis:
+  Reward CV: 229.75% (coefficient of variation)
+  Error CV: 23.35%
+  (Lower CV indicates more consistent performance)
+
+======================================================================

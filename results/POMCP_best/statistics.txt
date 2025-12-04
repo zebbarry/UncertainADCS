@@ -1,0 +1,46 @@
+============================================================
+Simulation Statistics for POMCP_best
+============================================================
+
+Simulation Duration:
+  Number of steps: 116
+  Sim time: 39.89676134
+
+State Information:
+  Initial state: θ=56.57°, ω=0.95°/s, health=healthy
+  Final state:   θ=-97.71°, ω=-0.95°/s, health=failed
+
+Action Distribution:
+  Action 1 (u=-4.0 N⋅m): 15 times (13.0%)
+  Action 2 (u=-2.0 N⋅m): 26 times (22.6%)
+  Action 3 (u=0.0 N⋅m): 43 times (37.4%)
+  Action 4 (u=2.0 N⋅m): 16 times (13.9%)
+  Action 5 (u=4.0 N⋅m): 15 times (13.0%)
+
+Performance Metrics:
+  Solver Time: 0.048579277
+  Total reward: 36811.2
+  Final cumulative reward: 36811.2
+  Average reward per step: 320.1
+
+Tracking Performance:
+  Mean angle error: 9.58°
+  Std angle error: 43.29°
+  Max absolute error: 146.57°
+  Final RMS error: 44.16°
+
+Control Effort:
+  Total control effort: 204.0
+  Average |u|: 1.77
+  Max |u|: 4.0
+
+Health State Distribution:
+  healthy: 2 steps (1.7%)
+  degraded: 25 steps (21.6%)
+  critical: 88 steps (75.9%)
+  failed: 1 steps (0.9%)
+
+Belief Quality:
+  Average belief entropy: 0.671 (lower = more confident)
+
+============================================================
