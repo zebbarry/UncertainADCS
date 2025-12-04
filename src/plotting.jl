@@ -374,8 +374,11 @@ function save_multi_simulation_results(histories, solver_name::String, pomdp, so
     for i in 1:min(10, num_sims)
         plot!(p_traj, all_θ_hists[i], color=:blue, linewidth=0.5)
     end
-    # Plot mean trajectory
-    mean_θ = mean(all_θ_hists)
+
+    # Plot mean trajectory (computed up to minimum common length)
+    min_length = minimum(length.(all_θ_hists))
+    truncated_hists = [θ[1:min_length] for θ in all_θ_hists]
+    mean_θ = mean(truncated_hists)
     plot!(p_traj, mean_θ, color=:red, linewidth=2, label="Mean", legend=:topright)
     savefig(p_traj, joinpath(output_dir, "simulation_comparison.png"))
     println("  ✓ Saved simulation_comparison.png")
