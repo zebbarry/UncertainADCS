@@ -33,7 +33,7 @@ end
     ω_max::Float64 = 0.4           # rad/s
 
     # Discretization
-    n_θ::Int = 36                  # number of angle bins
+    n_θ::Int = 72                  # number of angle bins
     n_ω::Int = 25                  # number of angular velocity bins
 
     # Actions: discretized torque levels
@@ -53,8 +53,8 @@ end
     )
 
     # Degradation parameters
-    k1::Float64 = 0.0            # natural degradation rate
-    k2::Float64 = 0.01          # usage-dependent degradation
+    k1::Float64 = 0.0             # natural degradation rate
+    k2::Float64 = 0.01            # usage-dependent degradation
 
     # Observation noise
     σ_θ::Float64 = 0.05            # angle measurement noise (rad)

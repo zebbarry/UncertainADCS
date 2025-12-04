@@ -5,6 +5,7 @@ using BasicPOMCP
 using Random
 using PointBasedValueIteration
 using FIB
+using Statistics
 
 # Create the POMDP
 pomdp = SpacecraftPOMDP()
@@ -88,8 +89,7 @@ end
 
 # Evaluate policy
 # Run simulation
-hist = run_simulation(pomdp, policy, 2000)
-
+hist = run_simulation(pomdp, policy, 200)
 
 ############################################# IF WE USE/RUN ALL SOLVERS TOGETHER: #############################################
 
