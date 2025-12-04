@@ -84,7 +84,7 @@ for (name, solver) in solvers
     println("\n=== Solving with $name ===")
     solve_time = @elapsed policies[name] = solve(solver, pomdp)
     println("\n=== Simulating $name policy ===")
-    sim_time = @elapsed histories[name] = run_simulation(pomdp, policies[name], 5000)
+    sim_time = @elapsed histories[name] = run_simulation(pomdp, policies[name], 3000)
     save_simulation_results(histories[name], name, pomdp, solve_time, sim_time)
 end
 
