@@ -247,7 +247,7 @@ Creates a folder `base_dir/solver_name/` containing:
 - `aggregated_statistics.txt`: Statistical summary across all runs
 - `reward_distribution.png`: Distribution of total rewards
 - `error_distribution.png`: Distribution of RMS errors
-- `simulation_comparison.png`: Overlay of multiple simulation trajectories
+- `control_distribution.png`: Distribution of control efforts
 - Individual run results in `runs/` subfolder
 """
 function save_multi_simulation_results(histories, solver_name::String, pomdp, solve_time::Float64, total_sim_time::Float64; base_dir="results")
@@ -363,21 +363,7 @@ function save_multi_simulation_results(histories, solver_name::String, pomdp, so
     savefig(p_error, joinpath(output_dir, "error_distribution.png"))
     println("  ✓ Saved error_distribution.png")
 
-    # ====== Plot 3: Trajectory comparison (first 10 runs) ======
-    p_traj = plot(
-        xlabel="Time step",
-        ylabel="Angle (°)",
-        title="$solver_name: Trajectory Comparison (first 10 runs)",
-        legend=false,
-        alpha=0.3
-    )
-    for i in 1:min(10, num_sims)
-        plot!(p_traj, all_θ_hists[i], color=:blue, linewidth=0.5)
-    end
-    savefig(p_traj, joinpath(output_dir, "simulation_comparison.png"))
-    println("  ✓ Saved simulation_comparison.png")
-
-    # ====== Plot 4: Control effort distribution ======
+    # ====== Plot 3: Control effort distribution ======
     p_control = histogram(
         total_control_efforts,
         bins=20,
