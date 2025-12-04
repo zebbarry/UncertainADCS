@@ -180,6 +180,8 @@ p4 = plot([string(h) for h in health_hist], label="Health state", xlabel="Time s
 
 p = plot(p1, p2, p3, p4, layout=(4, 1), size=(800, 800))
 
+# Remove old file if it exists to ensure clean overwrite
+isfile("spacecraft_attitude_control_simulation.png") && rm("spacecraft_attitude_control_simulation.png")
 savefig(p, "spacecraft_attitude_control_simulation.png")
 
 # Extract health belief evolution
@@ -212,6 +214,8 @@ p_belief = areaplot(
     legend=:right,
     fillalpha=0.7
 )
+# Remove old file if it exists to ensure clean overwrite
+isfile("health_belief_evolution.png") && rm("health_belief_evolution.png")
 savefig(p_belief, "health_belief_evolution.png")
 
 # Phase portrait
@@ -238,6 +242,8 @@ p_phase = scatter(
 )
 # Add target point
 scatter!([0.0], [0.0], color=:blue, marker=:star, markersize=10, label="Target")
+# Remove old file if it exists to ensure clean overwrite
+isfile("phase_portrait.png") && rm("phase_portrait.png")
 savefig(p_phase, "phase_portrait.png")
 
 # Cumulative reward
@@ -254,6 +260,8 @@ plot!(p_metrics[1], cumulative_reward, xlabel="Time step", ylabel="Cumulative Re
 plot!(p_metrics[2], rms_error, xlabel="Time step", ylabel="RMS Error (°)", label="")
 plot!(p_metrics[3], cumulative_control, xlabel="Time step", ylabel="Cumulative |u|", label="")
 
+# Remove old file if it exists to ensure clean overwrite
+isfile("cumulative_metrics.png") && rm("cumulative_metrics.png")
 savefig(p_metrics, "cumulative_metrics.png")
 
 # # Compute dominant health belief at each timestep
