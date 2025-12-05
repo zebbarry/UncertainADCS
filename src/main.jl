@@ -208,3 +208,68 @@ end
 # end
 
 ############################################# END OF [IF WE USE/RUN ALL SOLVERS TOGETHER] #############################################
+
+
+############################################# QMDP DISCOUNT FACTOR SWEEP #############################################
+
+println("\n" * "="^70)
+println("=== QMDP Discount Factor Sweep ===")
+println("="^70)
+
+# Configuration for discount factor sweep
+discount_factors = 0.95:0.005:0.995  # Range from 0.95 to 0.995
+num_steps_qmdp = 3000
+seed = 42  # Fixed seed for reproducibility
+
+# Storage for results
+qmdp_results = Dict{Float64, Float64}()  # discount => total_reward
+
+for γ in discount_factors
+    println("\n--- Testing discount factor γ = $γ ---")
+
+    # Create POMDP with this discount factor
+    pomdp_γ = SpacecraftPOMDP(discount=γ)
+
+    # Solve with QMDP
+    qmdp_solver = QMDPSolver(max_iterations=1000, verbose=false)
+    solve_time = @elapsed policy = solve(qmdp_solver, pomdp_γ)
+    println("  Solving completed in $(round(solve_time, digits=2))s")
+
+    # Run one simulation
+    rng = MersenneTwister(seed)
+    updater = BootstrapFilter(pomdp_γ, 10000, rng=rng)
+
+    print("  Running simulation... ")
+    sim_time = @elapsed begin
+        hist = run_simulation(pomdp_γ, policy, num_steps_qmdp, rng, updater)
+    end
+    println("done ($(round(sim_time, digits=2))s)")
+
+    # Calculate total reward
+    total_reward = sum(reward_hist(hist))
+    qmdp_results[γ] = total_reward
+
+    println("  Total reward: $(round(total_reward, digits=2))")
+end
+
+# Find and report the best discount factor
+println("\n" * "="^70)
+println("=== QMDP Discount Factor Sweep Results ===")
+println("="^70)
+
+best_γ = argmax(qmdp_results)
+max_reward = qmdp_results[best_γ]
+
+println("\nAll results:")
+for γ in sort(collect(keys(qmdp_results)))
+    reward = qmdp_results[γ]
+    marker = (γ == best_γ) ? " ← BEST" : ""
+    println("  γ = $γ: reward = $(round(reward, digits=2))$marker")
+end
+
+println("\n" * "="^70)
+println("MAXIMUM REWARD: $(round(max_reward, digits=2))")
+println("BEST DISCOUNT FACTOR: $best_γ")
+println("="^70)
+
+############################################# END OF QMDP DISCOUNT FACTOR SWEEP #############################################
